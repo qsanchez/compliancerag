@@ -4,21 +4,27 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ingestion import chunker, embedder, indexer
-from ingestion.sources import gdpr
+from ingestion.sources import dora, gdpr, nis2
 
 console = Console()
 
+_LOADERS = {
+    "gdpr": gdpr.load,
+    "nis2": nis2.load,
+    "dora": dora.load,
+}
+
 
 def run(regulation: str = "gdpr") -> None:
-    if regulation != "gdpr":
-        raise ValueError(f"Unsupported regulation in Phase 1: {regulation}")
+    if regulation not in _LOADERS:
+        raise ValueError(f"Unknown regulation '{regulation}'. Choose from: {list(_LOADERS)}")
 
     with Progress(SpinnerColumn(), TextColumn("{task.description}"), console=console) as progress:
-        t = progress.add_task("Loading GDPR documents from EUR-Lex...")
+        t = progress.add_task(f"Loading {regulation.upper()} documents...")
         t0 = time.perf_counter()
-        documents = gdpr.load()
+        documents = _LOADERS[regulation]()
         elapsed = lambda: f"{time.perf_counter() - t0:.1f}s"  # noqa: E731
-        progress.update(t, description=f"Loaded {len(documents)} documents [{elapsed()}]")
+        progress.update(t, description=f"Loaded {len(documents)} {regulation.upper()} documents [{elapsed()}]")
         progress.stop_task(t)
 
         t = progress.add_task("Chunking documents...")
@@ -47,6 +53,10 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Run the ingestion pipeline.")
-    parser.add_argument("--regulation", default="gdpr", help="Regulation to ingest (default: gdpr)")
+    parser.add_argument(
+        "--regulation", default="gdpr",
+        choices=list(_LOADERS),
+        help="Regulation to ingest (default: gdpr)",
+    )
     args = parser.parse_args()
     run(args.regulation)

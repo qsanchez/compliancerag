@@ -2,7 +2,7 @@
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
 > Version: 0.1 — Initial  
-> Status: Phase 1 complete — Phase 2 next
+> Status: Phase 2 in progress
 
 ---
 
@@ -196,8 +196,8 @@ compliancerag/
 | Source | Format | URL |
 |---|---|---|
 | GDPR full text | HTML (per-article) | https://gdpr-info.eu — EUR-Lex blocks programmatic access via AWS WAF; gdpr-info.eu republishes the official text structured by article |
-| NIS2 Directive | HTML/PDF | https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32022L2555 |
-| DORA Regulation | HTML/PDF | https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32022R2554 |
+| NIS2 Directive | HTML (full text) | https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32022L2555 — EUR-Lex accessible locally with browser headers (blocked from AWS) |
+| DORA Regulation | HTML (full text) | https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32022R2554 — same as NIS2 |
 
 ### Quantitative enforcement data (Analytics)
 | Source | Content | Format |
@@ -232,7 +232,7 @@ compliancerag/
 **Goal:** Extend corpus to all 3 regulations; replace pure semantic retrieval with hybrid + re-ranking; add full observability.  
 **Exit criterion:** RAGAS comparison shows hybrid ≥ Phase 1 baseline; LangSmith traces visible for every query.
 
-- [ ] NIS2 + DORA loaders added to corpus
+- [x] NIS2 + DORA loaders added to corpus — 46 NIS2 articles + 64 DORA articles via EUR-Lex HTML full-text parser
 - [ ] pgvector on RDS PostgreSQL (Terraform `modules/rds`)
 - [ ] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm / BM25-like)
 - [ ] Cross-encoder re-ranking
