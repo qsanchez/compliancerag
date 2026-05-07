@@ -1,0 +1,64 @@
+version: "3"
+
+vars:
+  PYTHON: uv run python
+  UVICORN: uv run uvicorn
+
+tasks:
+  ingest:
+    desc: "Run the full document ingestion pipeline (default: GDPR only, local Chroma)"
+    cmds:
+      - "{{.PYTHON}} -m ingestion.pipeline"
+    env:
+      VECTOR_STORE: "{{.VECTOR_STORE | default \"chroma\"}}"
+
+  eval:
+    desc: "Run RAGAS evaluation against the golden dataset"
+    cmds:
+      - "{{.PYTHON}} -m evaluation.evaluator"
+
+  test:
+    desc: "Run the full test suite"
+    cmds:
+      - uv run pytest tests/ -v --cov=. --cov-report=term-missing
+
+  test:unit:
+    desc: "Run unit tests only"
+    cmds:
+      - uv run pytest tests/unit/ -v
+
+  test:integration:
+    desc: "Run integration tests only"
+    cmds:
+      - uv run pytest tests/integration/ -v
+
+  dev:
+    desc: "Start the FastAPI development server with hot reload"
+    cmds:
+      - "{{.UVICORN}} api.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  infra:up:
+    desc: "Start local infrastructure (Postgres + pgvector + Chroma)"
+    cmds:
+      - docker compose up -d
+      - docker compose ps
+
+  infra:down:
+    desc: "Stop local infrastructure"
+    cmds:
+      - docker compose down
+
+  lint:
+    desc: "Run ruff linter"
+    cmds:
+      - uv run ruff check .
+
+  format:
+    desc: "Run ruff formatter"
+    cmds:
+      - uv run ruff format .
+
+  typecheck:
+    desc: "Run mypy type checker"
+    cmds:
+      - uv run mypy .

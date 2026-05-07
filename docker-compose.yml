@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: compliancerag-postgres
+    environment:
+      POSTGRES_USER: compliancerag
+      POSTGRES_PASSWORD: compliancerag
+      POSTGRES_DB: compliancerag
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U compliancerag"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: compliancerag-chroma
+    environment:
+      CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER: ""
+      ANONYMIZED_TELEMETRY: "false"
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  chroma_data:
