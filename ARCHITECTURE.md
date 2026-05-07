@@ -234,7 +234,7 @@ compliancerag/
 
 - [x] NIS2 + DORA loaders added to corpus — 46 NIS2 articles + 64 DORA articles via EUR-Lex HTML full-text parser
 - [x] pgvector on RDS PostgreSQL (Terraform `modules/rds`) — RDS module + pgvector code path in indexer/retriever, switchable via `VECTOR_STORE=pgvector`
-- [ ] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm / BM25-like)
+- [x] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm / BM25-like) — RRF fusion (k=60); GIN trigram index on document column
 - [ ] Cross-encoder re-ranking
 - [ ] LangSmith integration — trace every query with prompt version + retrieved chunks
 - [ ] Expand golden dataset to 30 questions across GDPR, NIS2, DORA

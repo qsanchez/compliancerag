@@ -49,9 +49,10 @@ _EMBEDDING_DIM = 1024  # Amazon Titan Embeddings v2 default
 
 def _get_pgvector_conn() -> psycopg.Connection[Any]:
     conn = psycopg.connect(get_settings().database_url)
-    # Extension must exist before register_vector can map the vector type
+    # Both extensions must exist before register_vector maps the vector type
     with conn.cursor() as cur:
         cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        cur.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
     conn.commit()
     register_vector(conn)
     return conn
@@ -59,7 +60,6 @@ def _get_pgvector_conn() -> psycopg.Connection[Any]:
 
 def _ensure_pgvector_schema(conn: psycopg.Connection[Any]) -> None:
     with conn.cursor() as cur:
-        # Extension already created in _get_pgvector_conn
         cur.execute(f"""
             CREATE TABLE IF NOT EXISTS embeddings (
                 id       TEXT PRIMARY KEY,
@@ -68,10 +68,15 @@ def _ensure_pgvector_schema(conn: psycopg.Connection[Any]) -> None:
                 metadata JSONB
             )
         """)
-        # HNSW index for fast approximate nearest-neighbour with cosine distance
+        # HNSW index for fast ANN with cosine distance (semantic search)
         cur.execute("""
             CREATE INDEX IF NOT EXISTS embeddings_hnsw
             ON embeddings USING hnsw (embedding vector_cosine_ops)
+        """)
+        # GIN trigram index for keyword search (pg_trgm word_similarity)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS embeddings_trgm
+            ON embeddings USING gin (document gin_trgm_ops)
         """)
     conn.commit()
 
