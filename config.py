@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     langsmith_project: str = "compliancerag"
     langchain_tracing_v2: bool = False
 
+    # Reranker
+    reranker_enabled: bool = True
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
     # API
     api_key: str = ""
     api_host: str = "0.0.0.0"

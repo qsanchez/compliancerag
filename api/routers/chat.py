@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from api.models import ChatRequest, ChatResponse
 from config import get_settings
-from rag import context_builder, retriever
+from rag import context_builder, reranker, retriever
 
 logger = structlog.get_logger()
 
@@ -22,8 +22,10 @@ def _load_prompt(name: str) -> str:
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     settings = get_settings()
-
-    chunks = retriever.retrieve(request.question)
+    fetch_k = 5 * reranker.FETCH_MULTIPLIER if settings.reranker_enabled else 5
+    chunks = retriever.retrieve(request.question, top_k=fetch_k)
+    if settings.reranker_enabled:
+        chunks = reranker.rerank(request.question, chunks, top_k=5)
     if not chunks:
         raise HTTPException(
             status_code=404,

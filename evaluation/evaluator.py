@@ -17,7 +17,7 @@ from rich.table import Table
 
 from config import get_settings
 from ingestion import embedder
-from rag import context_builder, retriever
+from rag import context_builder, reranker, retriever
 
 console = Console()
 
@@ -74,7 +74,11 @@ def run() -> None:
     for i, item in enumerate(golden, start=1):
         q = item["question"]
         console.print(f"  [{i}/{len(golden)}] {q[:80]}...")
-        chunks = retriever.retrieve(q)
+        settings = get_settings()
+        fetch_k = 5 * reranker.FETCH_MULTIPLIER if settings.reranker_enabled else 5
+        chunks = retriever.retrieve(q, top_k=fetch_k)
+        if settings.reranker_enabled:
+            chunks = reranker.rerank(q, chunks, top_k=5)
         ctx = context_builder.build(chunks)
         answer = _generate_answer(q, ctx["context"])
 
