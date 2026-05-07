@@ -211,9 +211,10 @@ compliancerag/
 ## 6. Phased Delivery Plan
 
 ### Phase 1 — Core RAG (target: 1-2 weeks)
-**Goal:** Working RAG pipeline answering textual questions about GDPR with citations.
+**Goal:** Working RAG pipeline answering textual questions about GDPR with citations.  
+**Exit criterion:** RAGAS faithfulness ≥ 0.7 on 10-question golden dataset.
 
-- [ ] Project scaffolding (structure, pyproject.toml, docker-compose, .env.example, Makefile)
+- [x] Project scaffolding (structure, pyproject.toml, docker-compose, .env.example, Taskfile)
 - [ ] GDPR document loader — fetch from EUR-Lex, parse by article
 - [ ] Chunking strategy — recursive by article/recital, with metadata (article_number, regulation, chapter)
 - [ ] Embedding via Bedrock Titan Embeddings v2
@@ -227,34 +228,43 @@ compliancerag/
 - [ ] RAGAS baseline evaluation run
 - [ ] Unit tests for chunker, embedder, retriever
 
-### Phase 2 — Hybrid retrieval + quality (target: 1 week)
-- [ ] pgvector on RDS (Terraform module)
-- [ ] Hybrid retrieval: semantic + BM25 via pg_trgm
-- [ ] Re-ranking with cross-encoder
+### Phase 2 — Corpus expansion + Hybrid Retrieval (target: 1-2 weeks)
+**Goal:** Extend corpus to all 3 regulations; replace pure semantic retrieval with hybrid + re-ranking; add full observability.  
+**Exit criterion:** RAGAS comparison shows hybrid ≥ Phase 1 baseline; LangSmith traces visible for every query.
+
 - [ ] NIS2 + DORA loaders added to corpus
-- [ ] Expand golden dataset to 30 questions across 3 regulations
-- [ ] RAGAS evaluation comparison: basic vs hybrid retrieval
-- [ ] LangSmith integration — trace every query
+- [ ] pgvector on RDS PostgreSQL (Terraform `modules/rds`)
+- [ ] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm / BM25-like)
+- [ ] Cross-encoder re-ranking
+- [ ] LangSmith integration — trace every query with prompt version + retrieved chunks
+- [ ] Expand golden dataset to 30 questions across GDPR, NIS2, DORA
+- [ ] RAGAS evaluation comparison: Phase 1 baseline vs hybrid retrieval
 
 ### Phase 3 — Agentic + Analytics (target: 1-2 weeks)
-- [ ] LangGraph agent with router node
-- [ ] `search_regulations` tool (RAG)
+**Goal:** LangGraph router that decides between RAG and quantitative analytics; charts over enforcement data.  
+**Exit criterion:** Agent correctly routes RAG vs analytics queries; time-series charts render end-to-end.
+
+- [ ] LangGraph agent with router node (`agent/graph.py`, `agent/router.py`)
+- [ ] `search_regulations` tool wrapping the RAG pipeline
 - [ ] GDPR fines dataset loaded to S3 as Parquet
-- [ ] Athena workgroup + database (Terraform)
+- [ ] Athena workgroup + database (Terraform `modules/athena`)
 - [ ] `query_metrics` tool (Athena SQL)
 - [ ] `generate_chart` tool (matplotlib/plotly → base64)
 - [ ] Agent memory/state for multi-turn conversation
 - [ ] Prompt injection defense patterns
 - [ ] Agent regression test suite
 
-### Phase 4 — Production-readiness (target: 1 week)
-- [ ] FastAPI hardening: auth, rate limiting, structured logging, error handling
-- [ ] AWS Lambda + API Gateway deployment (Terraform)
+### Phase 4 — Production Hardening (target: 1 week)
+**Goal:** Deployable to AWS with full observability, CI/CD, and audit trail.  
+**Exit criterion:** CI green on every PR; one-command deploy to AWS; CloudWatch dashboard live.
+
+- [ ] FastAPI hardening: API key auth, rate limiting, structured logging, error handling
+- [ ] Audit logging — every query logged with user, timestamp, retrieved chunks, model version, response
+- [ ] AWS Lambda + API Gateway deployment (Terraform `modules/lambda`)
 - [ ] CloudWatch dashboard: latency, cost per query, error rate
-- [ ] CI/CD pipeline: GitHub Actions (tests + RAGAS eval + tf-plan)
-- [ ] Audit logging — every query logged with user, timestamp, retrieved chunks, model response
-- [ ] README final + Architecture diagram (Mermaid)
-- [ ] ADRs complete
+- [ ] GitHub Actions CI: tests + RAGAS eval on PR; Terraform plan on infra PR
+- [ ] Architecture diagram (Mermaid) in `docs/diagrams/`
+- [ ] ADRs complete (`docs/adr/`)
 
 ---
 
