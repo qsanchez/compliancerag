@@ -16,6 +16,13 @@ build/
 evaluation/reports/*
 !evaluation/reports/.gitkeep
 
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+
+# Local dev tool config
+.claude/settings.local.json
+
 # IDE
 .vscode/
 .idea/
@@ -24,11 +31,17 @@ evaluation/reports/*
 # macOS
 .DS_Store
 
-# Terraform state
+# Terraform state and sensitive vars
 infra/**/.terraform/
 infra/**/*.tfstate
 infra/**/*.tfstate.backup
+infra/environments/prod.tfvars
 
 # Test coverage
 .coverage
 htmlcov/
+
+# Runtime data (created by ingestion pipeline and local vector store)
+chroma_db/
+data/
+*.log
