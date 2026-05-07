@@ -1,0 +1,52 @@
+[
+  {
+    "question": "What are the principles relating to processing of personal data under GDPR?",
+    "ground_truth": "Personal data must be processed lawfully, fairly and transparently (lawfulness, fairness, transparency); collected for specified, explicit and legitimate purposes (purpose limitation); adequate, relevant and limited to what is necessary (data minimisation); accurate and kept up to date (accuracy); kept no longer than necessary (storage limitation); processed with appropriate security (integrity and confidentiality). The controller is responsible for and must be able to demonstrate compliance with these principles (accountability).",
+    "reference_articles": ["Article 5"]
+  },
+  {
+    "question": "What are the lawful bases for processing personal data under GDPR?",
+    "ground_truth": "Processing is lawful only if at least one of the following applies: the data subject has given consent; processing is necessary for the performance of a contract; processing is necessary for compliance with a legal obligation; processing is necessary to protect vital interests; processing is necessary for a task carried out in the public interest or in the exercise of official authority; or processing is necessary for the purposes of the legitimate interests pursued by the controller or a third party, except where such interests are overridden by the interests or fundamental rights and freedoms of the data subject.",
+    "reference_articles": ["Article 6"]
+  },
+  {
+    "question": "What information must a controller provide to data subjects at the time of data collection?",
+    "ground_truth": "The controller must provide: the identity and contact details of the controller; the contact details of the data protection officer; the purposes and legal basis for processing; the legitimate interests pursued (where applicable); any recipients of the personal data; any transfers to third countries; the retention period; the data subject's rights (access, rectification, erasure, restriction, portability, objection); the right to withdraw consent; the right to lodge a complaint with a supervisory authority; whether provision of data is a statutory or contractual requirement; and the existence of automated decision-making including profiling.",
+    "reference_articles": ["Article 13"]
+  },
+  {
+    "question": "What is the right to erasure ('right to be forgotten') under GDPR?",
+    "ground_truth": "Data subjects have the right to obtain erasure of their personal data without undue delay where: the data is no longer necessary for the purpose it was collected; consent is withdrawn and there is no other legal basis; the data subject objects and there are no overriding legitimate grounds; the data has been unlawfully processed; erasure is required to comply with a legal obligation; or the data was collected in relation to the offer of information society services to a child. The right does not apply where processing is necessary for freedom of expression, for compliance with a legal obligation, for reasons of public interest in public health, for archiving, scientific or historical research, or for the establishment, exercise or defence of legal claims.",
+    "reference_articles": ["Article 17"]
+  },
+  {
+    "question": "What transparency obligations does GDPR impose on controllers when communicating with data subjects?",
+    "ground_truth": "Controllers must provide information in a concise, transparent, intelligible and easily accessible form, using clear and plain language, in particular for any information addressed specifically to a child. Information must be provided in writing or by other means, including where appropriate by electronic means. When requested by the data subject, information may be provided orally. The controller must facilitate the exercise of data subject rights. Information must be provided free of charge. Where requests are manifestly unfounded or excessive, the controller may charge a reasonable fee or refuse to act.",
+    "reference_articles": ["Article 12"]
+  },
+  {
+    "question": "What does GDPR require regarding data protection by design and by default?",
+    "ground_truth": "Taking into account the state of the art, the cost of implementation and the nature, scope, context and purposes of processing, as well as the risks of varying likelihood and severity for rights and freedoms of natural persons, the controller must implement appropriate technical and organisational measures designed to implement data protection principles effectively and integrate necessary safeguards. By default, only personal data which are necessary for each specific purpose shall be processed — this applies to the amount of data collected, the extent of processing, the period of storage and the accessibility of data.",
+    "reference_articles": ["Article 25"]
+  },
+  {
+    "question": "What security measures does GDPR require for processing personal data?",
+    "ground_truth": "The controller and processor must implement appropriate technical and organisational measures to ensure a level of security appropriate to the risk, including as appropriate: pseudonymisation and encryption of personal data; the ability to ensure ongoing confidentiality, integrity, availability and resilience of processing systems; the ability to restore the availability and access to personal data in a timely manner in the event of a physical or technical incident; and a process for regularly testing, assessing and evaluating the effectiveness of technical and organisational measures. In assessing the appropriate level of security, account must be taken of the risks presented, in particular from accidental or unlawful destruction, loss, alteration, unauthorised disclosure of, or access to personal data.",
+    "reference_articles": ["Article 32"]
+  },
+  {
+    "question": "What are the obligations for notifying a personal data breach to the supervisory authority?",
+    "ground_truth": "In the case of a personal data breach, the controller must notify the competent supervisory authority without undue delay and, where feasible, not later than 72 hours after having become aware of the breach, unless the personal data breach is unlikely to result in a risk to the rights and freedoms of natural persons. The notification must include: the nature of the breach including categories and approximate number of data subjects and records concerned; the contact details of the DPO; the likely consequences; and the measures taken or proposed to address the breach. Where notification to the supervisory authority is not made within 72 hours, it must be accompanied by reasons for the delay.",
+    "reference_articles": ["Article 33"]
+  },
+  {
+    "question": "When is a Data Protection Impact Assessment (DPIA) required under GDPR?",
+    "ground_truth": "A DPIA is required where processing is likely to result in a high risk to the rights and freedoms of natural persons, in particular when using new technologies. It is required in particular for: systematic and extensive profiling with significant effects; large scale processing of special categories of data or data relating to criminal convictions; and systematic monitoring of a publicly accessible area on a large scale. The supervisory authority shall establish and make public a list of the kinds of processing operations which are subject to the requirement for a DPIA. A DPIA must include a systematic description of the processing, an assessment of the necessity and proportionality, an assessment of the risks, and the measures to address those risks.",
+    "reference_articles": ["Article 35"]
+  },
+  {
+    "question": "What are the maximum fines that can be imposed under GDPR for infringements?",
+    "ground_truth": "GDPR provides for two tiers of administrative fines. For less serious infringements (e.g. obligations of the controller and processor under Articles 8, 11, 25-39, 42 and 43), the maximum fine is €10,000,000 or 2% of total worldwide annual turnover, whichever is higher. For more serious infringements (e.g. basic principles for processing including consent under Articles 5, 6, 7 and 9, and data subjects' rights under Articles 12-22), the maximum fine is €20,000,000 or 4% of total worldwide annual turnover, whichever is higher. Supervisory authorities must ensure that fines are effective, proportionate and dissuasive.",
+    "reference_articles": ["Article 83"]
+  }
+]

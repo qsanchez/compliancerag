@@ -1,0 +1,111 @@
+import json
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+import litellm
+from datasets import Dataset
+from ragas import evaluate
+from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
+from rich.console import Console
+from rich.table import Table
+
+from config import get_settings
+from rag import context_builder, retriever
+
+console = Console()
+
+GOLDEN_DATASET_PATH = Path(__file__).parent / "golden_dataset.json"
+REPORTS_DIR = Path(__file__).parent / "reports"
+
+
+def _generate_answer(question: str, context: str) -> str:
+    settings = get_settings()
+    prompts_dir = Path(__file__).parent.parent / "rag" / "prompts"
+    system_prompt = (prompts_dir / "rag_system.txt").read_text()
+    user_prompt = (prompts_dir / "rag_user.txt").read_text().format(
+        context=context,
+        question=question,
+    )
+    response = litellm.completion(
+        model=settings.litellm_model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    return response.choices[0].message.content or ""
+
+
+def run() -> None:
+    golden = json.loads(GOLDEN_DATASET_PATH.read_text())
+    console.print(f"[bold]Running RAGAS evaluation on {len(golden)} questions...[/]")
+
+    questions: list[str] = []
+    answers: list[str] = []
+    contexts: list[list[str]] = []
+    ground_truths: list[str] = []
+
+    for i, item in enumerate(golden, start=1):
+        q = item["question"]
+        console.print(f"  [{i}/{len(golden)}] {q[:80]}...")
+        chunks = retriever.retrieve(q)
+        ctx = context_builder.build(chunks)
+        answer = _generate_answer(q, ctx["context"])
+
+        questions.append(q)
+        answers.append(answer)
+        contexts.append([c["text"] for c in chunks])
+        ground_truths.append(item["ground_truth"])
+
+    dataset = Dataset.from_dict(
+        {
+            "question": questions,
+            "answer": answers,
+            "contexts": contexts,
+            "ground_truth": ground_truths,
+        }
+    )
+
+    result = evaluate(
+        dataset,
+        metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+    )
+
+    # Print summary table
+    table = Table(title="RAGAS Evaluation Results")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Score", style="bold")
+    scores = result.to_pandas().mean()
+    for metric, score in scores.items():
+        color = "green" if score >= 0.7 else "red"
+        table.add_row(str(metric), f"[{color}]{score:.3f}[/{color}]")
+    console.print(table)
+
+    # Save report
+    REPORTS_DIR.mkdir(exist_ok=True)
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    report_path = REPORTS_DIR / f"baseline_{timestamp}.json"
+    report = {
+        "timestamp": timestamp,
+        "num_questions": len(golden),
+        "scores": {str(k): float(v) for k, v in scores.items()},
+    }
+    report_path.write_text(json.dumps(report, indent=2))
+    console.print(f"\nReport saved to [bold]{report_path}[/]")
+
+    faithfulness_score = float(scores.get("faithfulness", 0.0))
+    if faithfulness_score < 0.7:
+        console.print(
+            f"[bold red]FAIL:[/] faithfulness {faithfulness_score:.3f} < 0.7"
+            " (exit criterion not met)"
+        )
+        sys.exit(1)
+    else:
+        console.print(
+            f"[bold green]PASS:[/] faithfulness {faithfulness_score:.3f} >= 0.7"
+        )
+
+
+if __name__ == "__main__":
+    run()
