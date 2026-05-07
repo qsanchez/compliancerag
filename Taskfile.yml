@@ -16,6 +16,8 @@ tasks:
     desc: "Run RAGAS evaluation against the golden dataset"
     cmds:
       - "{{.PYTHON}} -m evaluation.evaluator"
+    env:
+      LANGCHAIN_TRACING_V2: "false"
 
   test:
     desc: "Run the full test suite"

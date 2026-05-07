@@ -2,21 +2,46 @@ import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import litellm
 from datasets import Dataset
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.embeddings import Embeddings
 from ragas import evaluate
+from ragas.embeddings import LangchainEmbeddingsWrapper
+from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
 from rich.console import Console
 from rich.table import Table
 
 from config import get_settings
+from ingestion import embedder
 from rag import context_builder, retriever
 
 console = Console()
 
 GOLDEN_DATASET_PATH = Path(__file__).parent / "golden_dataset.json"
 REPORTS_DIR = Path(__file__).parent / "reports"
+
+
+class _TitanEmbeddings(Embeddings):
+    """LangChain embeddings wrapper backed by our Bedrock Titan embedder."""
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return embedder.embed(texts)
+
+    def embed_query(self, text: str) -> list[float]:
+        return embedder.embed([text])[0]
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:  # satisfies abstract method variants
+        return self.embed_documents(*args, **kwargs)
+
+
+def _make_ragas_llm() -> LangchainLLMWrapper:
+    settings = get_settings()
+    # ChatLiteLLM routes through LiteLLM so we stay model-agnostic
+    return LangchainLLMWrapper(ChatLiteLLM(model=settings.litellm_model))
 
 
 def _generate_answer(question: str, context: str) -> str:
@@ -67,16 +92,21 @@ def run() -> None:
         }
     )
 
+    ragas_llm = _make_ragas_llm()
+    ragas_embeddings = LangchainEmbeddingsWrapper(_TitanEmbeddings())
+
     result = evaluate(
         dataset,
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+        llm=ragas_llm,
+        embeddings=ragas_embeddings,
     )
 
     # Print summary table
     table = Table(title="RAGAS Evaluation Results")
     table.add_column("Metric", style="cyan")
     table.add_column("Score", style="bold")
-    scores = result.to_pandas().mean()
+    scores = result.to_pandas().select_dtypes(include="number").mean()
     for metric, score in scores.items():
         color = "green" if score >= 0.7 else "red"
         table.add_row(str(metric), f"[{color}]{score:.3f}[/{color}]")

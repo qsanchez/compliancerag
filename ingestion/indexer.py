@@ -3,10 +3,10 @@ import chromadb
 from config import get_settings
 from ingestion.chunker import Chunk
 
-_client: chromadb.HttpClient | None = None
+_client: chromadb.ClientAPI | None = None
 
 
-def _get_client() -> chromadb.HttpClient:
+def _get_client() -> chromadb.ClientAPI:
     global _client
     if _client is None:
         settings = get_settings()
