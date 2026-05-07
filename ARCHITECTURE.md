@@ -2,7 +2,7 @@
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
 > Version: 0.1 — Initial  
-> Status: Phase 1 in progress
+> Status: Phase 1 complete — Phase 2 next
 
 ---
 
@@ -215,18 +215,18 @@ compliancerag/
 **Exit criterion:** RAGAS faithfulness ≥ 0.7 on 10-question golden dataset.
 
 - [x] Project scaffolding (structure, pyproject.toml, docker-compose, .env.example, Taskfile)
-- [ ] GDPR document loader — fetch from EUR-Lex, parse by article
-- [ ] Chunking strategy — recursive by article/recital, with metadata (article_number, regulation, chapter)
-- [ ] Embedding via Bedrock Titan Embeddings v2
-- [ ] Chroma vector store for local dev
-- [ ] Basic semantic retrieval
-- [ ] Context builder with citation formatting
-- [ ] Prompt templates (system + user)
-- [ ] LiteLLM wrapper around Bedrock Claude 3 Haiku
-- [ ] FastAPI `/chat` endpoint (minimal)
-- [ ] 10-question golden dataset for GDPR
-- [ ] RAGAS baseline evaluation run
-- [ ] Unit tests for chunker, embedder, retriever
+- [x] GDPR document loader — fetch from gdpr-info.eu, parse by article and recital
+- [x] Chunking strategy — token sliding window (512 tokens, 50 overlap), with metadata (article_number, regulation, chapter)
+- [x] Embedding via Bedrock Titan Embeddings v2
+- [x] Chroma vector store for local dev
+- [x] Basic semantic retrieval
+- [x] Context builder with citation formatting
+- [x] Prompt templates (system + user)
+- [x] LiteLLM wrapper around Bedrock Claude Haiku 4.5
+- [x] FastAPI `/chat` endpoint (minimal)
+- [x] 10-question golden dataset for GDPR
+- [x] RAGAS baseline evaluation run — faithfulness 0.886, answer_relevancy 0.878, context_precision 0.733, context_recall 0.886
+- [x] Unit tests for chunker, embedder, retriever
 
 ### Phase 2 — Corpus expansion + Hybrid Retrieval (target: 1-2 weeks)
 **Goal:** Extend corpus to all 3 regulations; replace pure semantic retrieval with hybrid + re-ranking; add full observability.  
