@@ -1,9 +1,17 @@
+import litellm
 import structlog
 from fastapi import FastAPI
 
 from api.middleware.auth import APIKeyMiddleware
 from api.middleware.logging import LoggingMiddleware
 from api.routers import chat, health
+from config import get_settings
+from observability.langsmith import setup as langsmith_setup
+
+_settings = get_settings()
+langsmith_setup.configure(_settings)
+if _settings.langchain_tracing_v2 and _settings.langsmith_api_key:
+    litellm.callbacks = ["langsmith"]
 
 structlog.configure(
     processors=[

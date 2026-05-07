@@ -23,16 +23,22 @@ tasks:
     desc: "Run the full test suite"
     cmds:
       - uv run pytest tests/ -v --cov=. --cov-report=term-missing
+    env:
+      LANGCHAIN_TRACING_V2: "false"
 
   test:unit:
     desc: "Run unit tests only"
     cmds:
       - uv run pytest tests/unit/ -v
+    env:
+      LANGCHAIN_TRACING_V2: "false"
 
   test:integration:
     desc: "Run integration tests only"
     cmds:
       - uv run pytest tests/integration/ -v
+    env:
+      LANGCHAIN_TRACING_V2: "false"
 
   dev:
     desc: "Start the FastAPI development server with hot reload"

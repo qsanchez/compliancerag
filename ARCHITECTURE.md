@@ -236,7 +236,7 @@ compliancerag/
 - [x] pgvector on RDS PostgreSQL (Terraform `modules/rds`) — RDS module + pgvector code path in indexer/retriever, switchable via `VECTOR_STORE=pgvector`
 - [x] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm / BM25-like) — RRF fusion (k=60); GIN trigram index on document column
 - [x] Cross-encoder re-ranking — `sentence-transformers` `CrossEncoder` (ms-marco-MiniLM-L-6-v2); lazy-loaded; wired into chat router + evaluator; fetch_k = 3×top_k candidates then rerank to top_k=5
-- [ ] LangSmith integration — trace every query with prompt version + retrieved chunks
+- [x] LangSmith integration — `@traceable` on retrieve/rerank/chat; prompt version (SHA-256 of prompt files); chunk IDs in trace metadata; litellm LangSmith callback for LLM spans; toggled via `LANGCHAIN_TRACING_V2`
 - [ ] Expand golden dataset to 30 questions across GDPR, NIS2, DORA
 - [ ] RAGAS evaluation comparison: Phase 1 baseline vs hybrid retrieval
 

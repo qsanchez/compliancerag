@@ -1,6 +1,8 @@
 import json
 from typing import Any, TypedDict
 
+from langsmith import traceable
+
 from config import get_settings
 from ingestion import embedder, indexer
 
@@ -103,6 +105,7 @@ def _retrieve_pgvector(query_embedding: list[float], query: str, top_k: int) -> 
 
 # ── Public interface ──────────────────────────────────────────────────────────
 
+@traceable(name="retrieve", run_type="retriever")
 def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
     query_embedding = embedder.embed([query])[0]
     if get_settings().vector_store == "pgvector":

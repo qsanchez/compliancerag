@@ -1,3 +1,4 @@
+from langsmith import traceable
 from sentence_transformers import CrossEncoder
 
 from config import get_settings
@@ -16,8 +17,8 @@ def _get_model() -> CrossEncoder:
     return _model
 
 
+@traceable(name="rerank", run_type="chain")
 def rerank(query: str, chunks: list[RetrievedChunk], top_k: int) -> list[RetrievedChunk]:
-    """Re-score chunks with a cross-encoder and return the top_k highest-scoring ones."""
     if not chunks:
         return chunks
     model = _get_model()
