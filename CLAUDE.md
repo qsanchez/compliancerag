@@ -31,14 +31,16 @@ docs/diagrams/   # Mermaid architecture diagram  (Phase 4)
 
 ## Local dev commands
 ```bash
-task infra:up    # start Postgres/pgvector + Chroma via Docker Compose
-task ingest      # run ingestion pipeline
-task dev         # start FastAPI with hot reload (port 8000)
-task test        # full test suite
-task lint        # ruff linter
-task format      # ruff formatter
-task typecheck   # mypy
-task eval        # RAGAS evaluation
+task infra:up          # start Postgres/pgvector + Chroma via Docker Compose
+task ingest            # run ingestion pipeline
+task dev               # start FastAPI with hot reload (port 8000)
+task test              # full test suite
+task test:unit         # unit tests only
+task test:integration  # integration tests only
+task lint              # ruff linter
+task format            # ruff formatter
+task typecheck         # mypy
+task eval              # RAGAS evaluation
 ```
 
 ## Code conventions
@@ -64,3 +66,4 @@ task eval        # RAGAS evaluation
 - Do not call AWS SDK directly in `rag/` or `api/` — use LiteLLM
 - Do not commit `.env` (only `.env.example`)
 - Do not push to `main` without running `task test` first
+- Do not invoke `uv run`, `pytest`, `ruff`, or `mypy` directly — always use the `task` commands above
