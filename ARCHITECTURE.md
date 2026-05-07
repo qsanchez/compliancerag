@@ -290,6 +290,11 @@ compliancerag/
 **Rationale:** Explicit graph-based control flow is essential for a router that decides between RAG and analytics paths. LangGraph provides stateful, inspectable, testable agent graphs — critical for regulated environments requiring auditability.  
 **Trade-off:** More verbose than simple LangChain chains. The explicitness is a feature, not a bug, in this context.
 
+### ADR-005 — Chunking Strategy: Recursive Character Splitting (Phase 1)
+**Decision:** Recursive character splitting (512 tokens, 50-token overlap) for Phase 1.  
+**Rationale:** Zero extra dependencies, fast, deterministic. Sufficient to validate the pipeline end-to-end before optimising retrieval quality.  
+**Trade-off:** Structure-blind — chunk boundaries may fall mid-obligation, degrading retrieval precision. To be replaced with semantic chunking in Phase 2. See [`docs/adr/005-chunking-strategy.md`](docs/adr/005-chunking-strategy.md) for full details.
+
 ---
 
 ## 8. Local Development Setup
