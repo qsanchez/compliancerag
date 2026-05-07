@@ -195,7 +195,7 @@ compliancerag/
 ### Regulatory text (RAG corpus)
 | Source | Format | URL |
 |---|---|---|
-| GDPR full text | HTML/PDF | https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32016R0679 |
+| GDPR full text | HTML (per-article) | https://gdpr-info.eu — EUR-Lex blocks programmatic access via AWS WAF; gdpr-info.eu republishes the official text structured by article |
 | NIS2 Directive | HTML/PDF | https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32022L2555 |
 | DORA Regulation | HTML/PDF | https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32022R2554 |
 

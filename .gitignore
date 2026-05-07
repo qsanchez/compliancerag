@@ -45,3 +45,6 @@ htmlcov/
 chroma_db/
 data/
 *.log
+
+# Ingestion cache (downloaded source documents)
+.cache/

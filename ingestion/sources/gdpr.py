@@ -1,14 +1,18 @@
+import re
+import time
 from pathlib import Path
 from typing import TypedDict
 
 import httpx
 from bs4 import BeautifulSoup
 
-EURLEX_URL = (
-    "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/"
-    "?uri=CELEX%3A32016R0679"
-)
-CACHE_PATH = Path(".cache/gdpr.html")
+# Source: gdpr-info.eu — EUR-Lex blocks programmatic access via AWS WAF.
+# gdpr-info.eu republishes the official text structured by article, which
+# is ideal for our per-article chunking strategy.
+BASE_URL = "https://gdpr-info.eu"
+CACHE_DIR = Path(".cache/gdpr")
+_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; compliancerag-ingestion/1.0)"}
+_REQUEST_DELAY = 0.5  # seconds between requests to be polite
 
 
 class Document(TypedDict):
@@ -20,99 +24,137 @@ class Document(TypedDict):
     chapter: str
 
 
-def _fetch_html() -> str:
-    CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if CACHE_PATH.exists():
-        return CACHE_PATH.read_text(encoding="utf-8")
-    with httpx.Client(follow_redirects=True, timeout=60) as client:
-        response = client.get(EURLEX_URL)
-        response.raise_for_status()
-    html = response.text
-    CACHE_PATH.write_text(html, encoding="utf-8")
-    return html
-
-
 def _normalize(text: str) -> str:
     return " ".join(text.split())
 
 
-def load() -> list[Document]:
-    html = _fetch_html()
+def _fetch(client: httpx.Client, url: str, cache_path: Path) -> str:
+    if cache_path.exists() and cache_path.stat().st_size > 0:
+        return cache_path.read_text(encoding="utf-8")
+    time.sleep(_REQUEST_DELAY)
+    response = client.get(url)
+    response.raise_for_status()
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(response.text, encoding="utf-8")
+    return response.text
+
+
+def _parse_article(html: str, chapter: str) -> Document | None:
     soup = BeautifulSoup(html, "lxml")
-    documents: list[Document] = []
+
+    h1 = soup.find("h1", class_="entry-title")
+    if not h1:
+        return None
+
+    number_span = h1.find("span", class_="dsgvo-number")
+    title_span = h1.find("span", class_="dsgvo-title")
+    article_number = _normalize(number_span.get_text()) if number_span else ""
+    title = _normalize(title_span.get_text()) if title_span else ""
+
+    content_div = soup.find("div", class_="entry-content")
+    if not content_div:
+        return None
+
+    # Remove nav / recital suggestion blocks — keep only the normative text
+    for tag in content_div.find_all(class_=["empfehlung-erwaegungsgruende", "page-navigation",
+                                             "link-to-overview", "feedback"]):
+        tag.decompose()
+
+    text = _normalize(content_div.get_text())
+    if not text:
+        return None
+
+    slug = re.sub(r"[^a-z0-9]+", "-", article_number.lower()).strip("-")
+    return Document(
+        id=f"gdpr-{slug}",
+        text=text,
+        article_number=article_number,
+        title=title,
+        regulation="GDPR",
+        chapter=chapter,
+    )
+
+
+def _parse_recital(html: str, recital_num: int) -> Document | None:
+    soup = BeautifulSoup(html, "lxml")
+    content_div = soup.find("div", class_="entry-content")
+    if not content_div:
+        return None
+    for tag in content_div.find_all(class_=["page-navigation", "link-to-overview", "feedback"]):
+        tag.decompose()
+    text = _normalize(content_div.get_text())
+    if not text:
+        return None
+    return Document(
+        id=f"gdpr-recital-{recital_num}",
+        text=text,
+        article_number=f"Recital {recital_num}",
+        title="",
+        regulation="GDPR",
+        chapter="Recitals",
+    )
+
+
+def _get_article_index(client: httpx.Client) -> list[tuple[str, str]]:
+    """Return list of (article_url, chapter_name) from the table of contents."""
+    html = _fetch(client, BASE_URL + "/", CACHE_DIR / "index.html")
+    soup = BeautifulSoup(html, "lxml")
+
+    toc = soup.find("h2", string=re.compile("Table of Contents"))
+    if not toc:
+        raise RuntimeError("Could not find Table of Contents on gdpr-info.eu")
+
+    container = toc.find_next_sibling()
+    entries: list[tuple[str, str]] = []
     current_chapter = ""
 
-    for tag in soup.find_all(["p", "div", "h1", "h2", "h3", "h4"]):
-        classes = tag.get("class", [])
-        text = _normalize(tag.get_text())
-        if not text:
-            continue
+    for div in container.find_all("div", recursive=False):
+        classes = div.get("class", [])
+        if "kapitel" in classes:
+            num = _normalize(div.find("span", class_="nummer").get_text()) if div.find("span", class_="nummer") else ""
+            title = _normalize(div.find("span", class_="titel").get_text()) if div.find("span", class_="titel") else ""
+            current_chapter = f"{num} — {title}" if num and title else num or title
+        elif "artikel" in classes:
+            link = div.find("a", href=True)
+            if link and current_chapter:
+                entries.append((link["href"], current_chapter))
 
-        # Chapter headings
-        if any(c in classes for c in ("ti-section-1", "ti-section-2")) or (
-            tag.name in ("h2", "h3") and "CHAPTER" in text.upper()
-        ):
-            current_chapter = text
-            continue
+    return entries
 
-        # Article title: look for tags that contain "Article N"
-        if any(c in classes for c in ("ti-art", "sti-art")):
-            # e.g. "Article 32 - Security of processing"
-            parts = text.split("—", 1) if "—" in text else text.split("-", 1)
-            article_number = parts[0].strip()
-            title = parts[1].strip() if len(parts) > 1 else ""
-            # Collect body text from following siblings until next article/chapter
-            body_parts: list[str] = []
-            for sibling in tag.find_next_siblings(["p", "div"]):
-                sib_classes = sibling.get("class", [])
-                sib_text = _normalize(sibling.get_text())
-                if not sib_text:
+
+def load(include_recitals: bool = True) -> list[Document]:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    documents: list[Document] = []
+
+    with httpx.Client(follow_redirects=True, timeout=30, headers=_HEADERS) as client:
+        # Articles
+        index = _get_article_index(client)
+        seen_urls: set[str] = set()
+        for url, chapter in index:
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            slug = url.rstrip("/").split("/")[-1]
+            cache_path = CACHE_DIR / f"{slug}.html"
+            try:
+                html = _fetch(client, url, cache_path)
+                doc = _parse_article(html, chapter)
+                if doc:
+                    documents.append(doc)
+            except Exception:
+                continue
+
+        # Recitals (1–173)
+        if include_recitals:
+            for n in range(1, 174):
+                url = f"{BASE_URL}/recitals/no-{n}/"
+                cache_path = CACHE_DIR / f"recital-{n}.html"
+                try:
+                    html = _fetch(client, url, cache_path)
+                    doc = _parse_recital(html, n)
+                    if doc:
+                        documents.append(doc)
+                except Exception:
                     continue
-                _heading = ("ti-art", "sti-art", "ti-section-1", "ti-section-2")
-                if any(c in sib_classes for c in _heading):
-                    break
-                body_parts.append(sib_text)
-                if len(" ".join(body_parts)) > 4000:
-                    break
-            body = " ".join(body_parts).strip()
-            if not body:
-                continue
-            slug = article_number.lower().replace(" ", "-").replace(".", "")
-            doc: Document = {
-                "id": f"gdpr-{slug}",
-                "text": body,
-                "article_number": article_number,
-                "title": title,
-                "regulation": "GDPR",
-                "chapter": current_chapter,
-            }
-            documents.append(doc)
-
-    # Recitals — numbered paragraphs starting with "(N)"
-    for tag in soup.find_all(["p", "div"]):
-        classes = tag.get("class", [])
-        if not any(c in classes for c in ("normal", "recital")):
-            continue
-        text = _normalize(tag.get_text())
-        if not text or len(text) < 50:
-            continue
-        if text.startswith("(") and ")" in text[:6]:
-            closing = text.index(")")
-            num_str = text[1:closing]
-            if not num_str.isdigit():
-                continue
-            recital_num = int(num_str)
-            body = text[closing + 1 :].strip()
-            if not body:
-                continue
-            doc = {
-                "id": f"gdpr-recital-{recital_num}",
-                "text": body,
-                "article_number": f"Recital {recital_num}",
-                "title": "",
-                "regulation": "GDPR",
-                "chapter": "Recitals",
-            }
-            documents.append(doc)
 
     return documents
