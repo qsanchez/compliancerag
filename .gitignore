@@ -48,3 +48,4 @@ data/
 
 # Ingestion cache (downloaded source documents)
 .cache/
+.$compliancerag.drawio.bkp
