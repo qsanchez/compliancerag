@@ -1,6 +1,7 @@
 from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from agent.router import classify
 from agent.state import AgentState
@@ -33,7 +34,7 @@ def _route_edge(state: AgentState) -> Literal["rag", "analytics"]:
     return state["route"]  # type: ignore[return-value]
 
 
-def _build() -> object:
+def _build() -> CompiledStateGraph:
     g: StateGraph = StateGraph(AgentState)
     g.add_node("router", _router_node)
     g.add_node("rag", _rag_node)
