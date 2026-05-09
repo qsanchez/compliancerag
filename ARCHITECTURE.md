@@ -203,8 +203,8 @@ compliancerag/
 - [x] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm / BM25-like) — RRF fusion (k=60); GIN trigram index on document column
 - [x] Cross-encoder re-ranking — `sentence-transformers` `CrossEncoder` (ms-marco-MiniLM-L-6-v2); lazy-loaded; wired into chat router + evaluator; fetch_k = 3×top_k candidates then rerank to top_k=5
 - [x] LangSmith integration — `@traceable` on retrieve/rerank/chat; prompt version (SHA-256 of prompt files); chunk IDs in trace metadata; litellm LangSmith callback for LLM spans; toggled via `LANGCHAIN_TRACING_V2`
-- [ ] Expand golden dataset to 30 questions across GDPR, NIS2, DORA
-- [ ] RAGAS evaluation comparison: Phase 1 baseline vs hybrid retrieval
+- [x] Expand golden dataset to 30 questions across GDPR, NIS2, DORA
+- [x] RAGAS evaluation comparison: Phase 1 baseline vs hybrid retrieval
 
 ### Phase 3 — Agentic + Analytics (target: 1-2 weeks)
 **Goal:** LangGraph router that decides between RAG and quantitative analytics; charts over enforcement data.  

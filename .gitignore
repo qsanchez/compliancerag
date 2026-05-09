@@ -12,9 +12,10 @@ build/
 # Environment
 .env
 
-# Evaluation reports (keep summaries, not full outputs)
+# Evaluation reports — ignore ad-hoc runs, track phase baselines
 evaluation/reports/*
 !evaluation/reports/.gitkeep
+!evaluation/reports/phase_*.json
 
 # Tool caches
 .pytest_cache/

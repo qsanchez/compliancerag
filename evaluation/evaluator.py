@@ -1,3 +1,4 @@
+import argparse
 import json
 import sys
 from datetime import UTC, datetime
@@ -23,6 +24,19 @@ console = Console()
 
 GOLDEN_DATASET_PATH = Path(__file__).parent / "golden_dataset.json"
 REPORTS_DIR = Path(__file__).parent / "reports"
+
+
+def _detect_regulations(golden: list[dict]) -> list[str]:
+    found = set()
+    for item in golden:
+        q = item["question"].lower()
+        if "gdpr" in q:
+            found.add("GDPR")
+        if "nis2" in q or "nis 2" in q:
+            found.add("NIS2")
+        if "dora" in q:
+            found.add("DORA")
+    return sorted(found)
 
 
 class _TitanEmbeddings(Embeddings):
@@ -63,8 +77,12 @@ def _generate_answer(question: str, context: str) -> str:
 
 
 def run() -> None:
+    parser = argparse.ArgumentParser(description="Run RAGAS evaluation")
+    parser.add_argument("--label", default="eval", help="Run label used in the report filename and metadata (e.g. phase_1, phase_2)")
+    args, _ = parser.parse_known_args()
+
     golden = json.loads(GOLDEN_DATASET_PATH.read_text())
-    console.print(f"[bold]Running RAGAS evaluation on {len(golden)} questions...[/]")
+    console.print(f"[bold]Running RAGAS evaluation on {len(golden)} questions (label: {args.label})...[/]")
 
     questions: list[str] = []
     answers: list[str] = []
@@ -119,10 +137,19 @@ def run() -> None:
     # Save report
     REPORTS_DIR.mkdir(exist_ok=True)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    report_path = REPORTS_DIR / f"baseline_{timestamp}.json"
+    report_path = REPORTS_DIR / f"{args.label}_{timestamp}.json"
+    settings = get_settings()
     report = {
+        "label": args.label,
         "timestamp": timestamp,
         "num_questions": len(golden),
+        "regulations": _detect_regulations(golden),
+        "retrieval": {
+            "vector_store": settings.vector_store,
+            "reranker_enabled": settings.reranker_enabled,
+            "reranker_model": settings.reranker_model if settings.reranker_enabled else None,
+        },
+        "model": settings.bedrock_model_id,
         "scores": {str(k): float(v) for k, v in scores.items()},
     }
     report_path.write_text(json.dumps(report, indent=2))
