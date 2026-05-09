@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     chroma_host: str = "localhost"
     chroma_port: int = 8001
 
+    # Analytics
+    athena_database: str = "compliancerag"
+    athena_s3_output: str = ""
+
     # LLMOps
     langsmith_api_key: str = ""
     langsmith_project: str = "compliancerag"

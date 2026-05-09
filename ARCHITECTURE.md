@@ -29,48 +29,14 @@ To demonstrate production-ready GenAI architecture skills: RAG pipeline design, 
 
 ## 2. Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        User / API Client                     │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ HTTP
-┌─────────────────────────▼───────────────────────────────────┐
-│                     FastAPI — REST API                       │
-│              (AWS Lambda + API Gateway / ECS Fargate)        │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────┐
-│                   LangGraph Agent (Router)                   │
-│                                                             │
-│   ┌─────────────────┐         ┌───────────────────────┐    │
-│   │  RAG Tool        │         │  Analytics Tool        │    │
-│   │  search_regs()   │         │  query_metrics()       │    │
-│   └────────┬────────┘         └──────────┬────────────┘    │
-│            │                             │                   │
-└────────────┼─────────────────────────────┼───────────────────┘
-             │                             │
-┌────────────▼──────────┐   ┌─────────────▼──────────────────┐
-│   RAG Pipeline         │   │   Analytics Pipeline            │
-│                        │   │                                 │
-│  pgvector (RDS PG)     │   │  Amazon Athena + S3 (Parquet)  │
-│  Hybrid retrieval      │   │  GDPR/NIS2 enforcement data     │
-│  BM25 + semantic       │   │  Time series, fines, stats      │
-│  Re-ranking            │   │                                 │
-└────────────┬──────────┘   └─────────────┬──────────────────┘
-             │                             │
-┌────────────▼─────────────────────────────▼──────────────────┐
-│               AWS Bedrock                                    │
-│   Claude 3 Haiku/Sonnet (generation)                        │
-│   Amazon Titan Embeddings v2 (embeddings)                   │
-└─────────────────────────────────────────────────────────────┘
-             │
-┌────────────▼──────────────────────────────────────────────  ┐
-│               Observability & LLMOps                         │
-│   LangSmith — traces, prompt versioning, evaluation          │
-│   AWS CloudWatch — infra metrics, cost, latency              │
-│   RAGAS — RAG quality evaluation                             │
-└──────────────────────────────────────────────────────────────┘
-```
+### 2.1 Context Diagram
+![Context Diagram](docs/diagrams/context.svg)
+
+### 2.2 Data Flow Diagram
+![Data Flow Diagram](docs/diagrams/data-flow.svg)
+
+### 2.3 Infrastructure Diagram
+![Infrastructure Diagram](docs/diagrams/infra.svg)
 
 ---
 
@@ -78,7 +44,7 @@ To demonstrate production-ready GenAI architecture skills: RAG pipeline design, 
 
 | Layer | Technology | Rationale |
 |---|---|---|
-| LLM | AWS Bedrock — Claude 3 Haiku/Sonnet | AWS-native, production-grade, no GPU management |
+| LLM | AWS Bedrock — Claude Haiku 4.5 | AWS-native, production-grade, no GPU management |
 | Embeddings | AWS Bedrock — Amazon Titan Embeddings v2 | AWS-native, consistent with Bedrock setup |
 | LLM abstraction | LiteLLM | Model-agnostic interface — swap models without code changes |
 | Orchestration | LangGraph | Stateful agent with explicit routing graph; author's existing expertise |
@@ -87,7 +53,7 @@ To demonstrate production-ready GenAI architecture skills: RAG pipeline design, 
 | Hybrid retrieval | pgvector (semantic) + pg_trgm (BM25-like) + re-ranking | Best of both worlds: semantic + keyword |
 | Analytical data | Amazon S3 + Athena | Serverless SQL over Parquet; minimal cost; enterprise pattern |
 | API | FastAPI | Lightweight, async, OpenAPI docs out of the box |
-| Serving (cloud) | AWS Lambda + API Gateway OR ECS Fargate | Lambda for low-traffic PoC; Fargate for production path |
+| Serving (cloud) | AWS Lambda + API Gateway | Sufficient for PoC traffic; see ADR-006 for future Fargate path |
 | IaC | Terraform | Cloud-agnostic; consistent with multi-cloud architect profile |
 | CI/CD | GitHub Actions | Regression tests, RAGAS eval, Terraform plan on every PR |
 | Evaluation | RAGAS | Faithfulness, answer relevancy, context precision/recall |
