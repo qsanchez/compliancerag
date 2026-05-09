@@ -56,6 +56,11 @@ tasks:
     cmds:
       - docker compose down
 
+  analytics:load:
+    desc: "Convert GDPR fines CSV → Parquet and upload to S3 (requires ATHENA_S3_DATA_BUCKET)"
+    cmds:
+      - "{{.PYTHON}} -m analytics.loaders.gdpr_fines"
+
   lint:
     desc: "Run ruff linter"
     cmds:

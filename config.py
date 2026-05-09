@@ -21,7 +21,9 @@ class Settings(BaseSettings):
 
     # Analytics
     athena_database: str = "compliancerag"
+    athena_table_fines: str = "gdpr_fines"
     athena_s3_output: str = ""
+    athena_s3_data_bucket: str = ""
 
     # LLMOps
     langsmith_api_key: str = ""

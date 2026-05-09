@@ -82,6 +82,19 @@ module "rds" {
   deletion_protection        = var.environment == "prod"
 }
 
+module "s3" {
+  source      = "./modules/s3"
+  environment = var.environment
+}
+
+module "athena" {
+  source = "./modules/athena"
+
+  environment           = var.environment
+  analytics_data_bucket = module.s3.analytics_data_bucket
+  athena_results_bucket = module.s3.athena_results_bucket
+}
+
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
 output "rds_endpoint" {
@@ -96,4 +109,19 @@ output "rds_connection_url" {
 
 output "rds_security_group_id" {
   value = module.rds.security_group_id
+}
+
+output "analytics_data_bucket" {
+  description = "Set as ATHENA_S3_DATA_BUCKET env var"
+  value       = module.s3.analytics_data_bucket
+}
+
+output "athena_s3_output" {
+  description = "Set as ATHENA_S3_OUTPUT env var"
+  value       = module.s3.athena_results_s3_uri
+}
+
+output "athena_database" {
+  description = "Set as ATHENA_DATABASE env var"
+  value       = module.athena.database_name
 }

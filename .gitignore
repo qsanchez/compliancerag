@@ -49,4 +49,7 @@ data/
 
 # Ingestion cache (downloaded source documents)
 .cache/
+
+# Generated analytics artifacts (Parquet files built by analytics:load)
+analytics/datasets/*.parquet
 .$compliancerag.drawio.bkp
