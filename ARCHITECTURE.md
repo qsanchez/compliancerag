@@ -228,7 +228,7 @@ compliancerag/
 - [ ] Audit logging — every query logged with user, timestamp, retrieved chunks, model version, response
 - [ ] AWS Lambda + API Gateway deployment (Terraform `modules/lambda`)
 - [ ] CloudWatch dashboard: latency, cost per query, error rate
-- [ ] GitHub Actions CI: tests + RAGAS eval on PR; Terraform plan on infra PR
+- [x] GitHub Actions CI: lint, format, typecheck, and tests on every PR (no deploy; see ADR 008 for planned prompt injection improvement)
 - [ ] Architecture diagram (Mermaid) in `docs/diagrams/`
 - [ ] ADRs complete (`docs/adr/`)
 
