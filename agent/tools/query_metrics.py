@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any
 
@@ -30,11 +31,11 @@ def _generate_sql(question: str) -> str:
 
 def _validate_sql(sql: str) -> None:
     normalized = sql.upper().lstrip()
+    for keyword in ("INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE"):
+        if re.search(rf"\b{keyword}\b", normalized):
+            raise ValueError(f"Forbidden keyword '{keyword}' in generated SQL")
     if not normalized.startswith("SELECT"):
         raise ValueError(f"Only SELECT queries are allowed. Got: {sql[:120]}")
-    for keyword in ("INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE"):
-        if keyword in normalized:
-            raise ValueError(f"Forbidden keyword '{keyword}' in generated SQL")
 
 
 def _run_query(sql: str) -> list[dict[str, Any]]:

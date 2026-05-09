@@ -78,11 +78,16 @@ def _generate_answer(question: str, context: str) -> str:
 
 def run() -> None:
     parser = argparse.ArgumentParser(description="Run RAGAS evaluation")
-    parser.add_argument("--label", default="eval", help="Run label used in the report filename and metadata (e.g. phase_1, phase_2)")
+    parser.add_argument(
+        "--label", default="eval",
+        help="Run label used in the report filename and metadata (e.g. phase_1, phase_2)",
+    )
     args, _ = parser.parse_known_args()
 
     golden = json.loads(GOLDEN_DATASET_PATH.read_text())
-    console.print(f"[bold]Running RAGAS evaluation on {len(golden)} questions (label: {args.label})...[/]")
+    console.print(
+        f"[bold]Running RAGAS evaluation on {len(golden)} questions (label: {args.label})...[/]"
+    )
 
     questions: list[str] = []
     answers: list[str] = []

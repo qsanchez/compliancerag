@@ -24,7 +24,8 @@ def run(regulation: str = "gdpr") -> None:
         t0 = time.perf_counter()
         documents = _LOADERS[regulation]()
         elapsed = lambda: f"{time.perf_counter() - t0:.1f}s"  # noqa: E731
-        progress.update(t, description=f"Loaded {len(documents)} {regulation.upper()} documents [{elapsed()}]")
+        desc = f"Loaded {len(documents)} {regulation.upper()} documents [{elapsed()}]"
+        progress.update(t, description=desc)
         progress.stop_task(t)
 
         t = progress.add_task("Chunking documents...")

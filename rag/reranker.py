@@ -25,4 +25,6 @@ def rerank(query: str, chunks: list[RetrievedChunk], top_k: int) -> list[Retriev
     pairs = [(query, chunk["text"]) for chunk in chunks]
     scores: list[float] = model.predict(pairs).tolist()
     ranked = sorted(zip(scores, chunks), key=lambda x: x[0], reverse=True)
-    return [RetrievedChunk(text=c["text"], metadata=c["metadata"], score=s) for s, c in ranked[:top_k]]
+    return [
+        RetrievedChunk(text=c["text"], metadata=c["metadata"], score=s) for s, c in ranked[:top_k]
+    ]

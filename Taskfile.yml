@@ -40,6 +40,13 @@ tasks:
     env:
       LANGCHAIN_TRACING_V2: "false"
 
+  test:regression:
+    desc: "Run regression tests only"
+    cmds:
+      - uv run pytest tests/regression/ -v
+    env:
+      LANGCHAIN_TRACING_V2: "false"
+
   dev:
     desc: "Start the FastAPI development server with hot reload"
     cmds:

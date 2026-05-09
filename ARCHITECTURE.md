@@ -210,15 +210,15 @@ compliancerag/
 **Goal:** LangGraph router that decides between RAG and quantitative analytics; charts over enforcement data.  
 **Exit criterion:** Agent correctly routes RAG vs analytics queries; time-series charts render end-to-end.
 
-- [ ] LangGraph agent with router node (`agent/graph.py`, `agent/router.py`)
-- [ ] `search_regulations` tool wrapping the RAG pipeline
-- [ ] GDPR fines dataset loaded to S3 as Parquet
-- [ ] Athena workgroup + database (Terraform `modules/athena`)
-- [ ] `query_metrics` tool (Athena SQL)
-- [ ] `generate_chart` tool (matplotlib/plotly → base64)
-- [ ] Agent memory/state for multi-turn conversation
-- [ ] Prompt injection defense patterns
-- [ ] Agent regression test suite
+- [x] LangGraph agent with router node (`agent/graph.py`, `agent/router.py`)
+- [x] `search_regulations` tool wrapping the RAG pipeline
+- [x] GDPR fines dataset loaded to S3 as Parquet
+- [x] Athena workgroup + database (Terraform `modules/athena`)
+- [x] `query_metrics` tool (Athena SQL)
+- [x] `generate_chart` tool (matplotlib/plotly → base64)
+- [x] Agent memory/state for multi-turn conversation
+- [x] Prompt injection defense patterns
+- [x] Agent regression test suite
 
 ### Phase 4 — Production Hardening (target: 1 week)
 **Goal:** Deployable to AWS with full observability, CI/CD, and audit trail.  

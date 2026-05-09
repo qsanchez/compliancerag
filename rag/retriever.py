@@ -39,7 +39,9 @@ def _retrieve_chroma(query_embedding: list[float], top_k: int) -> list[Retrieved
 
 # ── pgvector (hybrid: semantic + keyword via pg_trgm, fused with RRF) ────────
 
-def _retrieve_pgvector(query_embedding: list[float], query: str, top_k: int) -> list[RetrievedChunk]:
+def _retrieve_pgvector(
+    query_embedding: list[float], query: str, top_k: int
+) -> list[RetrievedChunk]:
     fetch_k = top_k * 3  # fetch more candidates from each leg before fusion
 
     with indexer._get_pgvector_conn() as conn:

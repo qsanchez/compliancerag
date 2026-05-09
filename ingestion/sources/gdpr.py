@@ -111,8 +111,10 @@ def _get_article_index(client: httpx.Client) -> list[tuple[str, str]]:
     for div in container.find_all("div", recursive=False):
         classes = div.get("class", [])
         if "kapitel" in classes:
-            num = _normalize(div.find("span", class_="nummer").get_text()) if div.find("span", class_="nummer") else ""
-            title = _normalize(div.find("span", class_="titel").get_text()) if div.find("span", class_="titel") else ""
+            num_tag = div.find("span", class_="nummer")
+            title_tag = div.find("span", class_="titel")
+            num = _normalize(num_tag.get_text()) if num_tag else ""
+            title = _normalize(title_tag.get_text()) if title_tag else ""
             current_chapter = f"{num} — {title}" if num and title else num or title
         elif "artikel" in classes:
             link = div.find("a", href=True)
