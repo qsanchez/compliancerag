@@ -19,6 +19,7 @@ class RetrievedChunk(TypedDict):
 
 # ── Chroma (pure semantic) ────────────────────────────────────────────────────
 
+
 def _retrieve_chroma(query_embedding: list[float], top_k: int) -> list[RetrievedChunk]:
     collection = indexer.get_collection()
     results = collection.query(
@@ -38,6 +39,7 @@ def _retrieve_chroma(query_embedding: list[float], top_k: int) -> list[Retrieved
 
 
 # ── pgvector (hybrid: semantic + keyword via pg_trgm, fused with RRF) ────────
+
 
 def _retrieve_pgvector(
     query_embedding: list[float], query: str, top_k: int
@@ -106,6 +108,7 @@ def _retrieve_pgvector(
 
 
 # ── Public interface ──────────────────────────────────────────────────────────
+
 
 @traceable(name="retrieve", run_type="retriever")
 def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:

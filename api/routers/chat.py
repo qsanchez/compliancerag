@@ -25,11 +25,13 @@ def chat(request: ChatRequest) -> ChatResponse:
         question = sanitize(request.question)
         injection_blocked = False
     except ValueError:
-        log_query(AuditRecord(
-            question=request.question[:500],
-            injection_blocked=True,
-            model_version=get_settings().bedrock_model_id,
-        ))
+        log_query(
+            AuditRecord(
+                question=request.question[:500],
+                injection_blocked=True,
+                model_version=get_settings().bedrock_model_id,
+            )
+        )
         raise HTTPException(status_code=400, detail="Invalid input.")
 
     initial: AgentState = {
@@ -60,16 +62,18 @@ def chat(request: ChatRequest) -> ChatResponse:
         latency_ms=round(latency_ms, 1),
     )
 
-    log_query(AuditRecord(
-        question=question,
-        route=result.get("route"),
-        answer=result.get("answer"),
-        citations=result.get("citations", []),
-        has_chart=result.get("chart_b64") is not None,
-        model_version=get_settings().bedrock_model_id,
-        latency_ms=round(latency_ms, 1),
-        injection_blocked=injection_blocked,
-    ))
+    log_query(
+        AuditRecord(
+            question=question,
+            route=result.get("route"),
+            answer=result.get("answer"),
+            citations=result.get("citations", []),
+            has_chart=result.get("chart_b64") is not None,
+            model_version=get_settings().bedrock_model_id,
+            latency_ms=round(latency_ms, 1),
+            injection_blocked=injection_blocked,
+        )
+    )
 
     return ChatResponse(
         answer=result["answer"],

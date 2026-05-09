@@ -105,6 +105,7 @@ def _index_pgvector(
 
 # ── Public interface ──────────────────────────────────────────────────────────
 
+
 def index(
     chunks: list[Chunk],
     embeddings: list[list[float]],

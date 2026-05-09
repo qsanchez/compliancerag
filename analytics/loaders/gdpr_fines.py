@@ -25,8 +25,15 @@ def csv_to_parquet(csv_path: Path = _CSV_PATH, parquet_path: Path = _PARQUET_PAT
     df["fine_amount_eur"] = (
         pd.to_numeric(df["fine_amount_eur"], errors="coerce").fillna(0).astype(int)
     )
-    str_cols = ("country", "authority", "controller", "sector",
-                "articles_violated", "violation_type", "summary")
+    str_cols = (
+        "country",
+        "authority",
+        "controller",
+        "sector",
+        "articles_violated",
+        "violation_type",
+        "summary",
+    )
     for col in str_cols:
         df[col] = df[col].fillna("").astype(str)
 

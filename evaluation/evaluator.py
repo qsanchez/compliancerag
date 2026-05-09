@@ -62,9 +62,13 @@ def _generate_answer(question: str, context: str) -> str:
     settings = get_settings()
     prompts_dir = Path(__file__).parent.parent / "rag" / "prompts"
     system_prompt = (prompts_dir / "rag_system.txt").read_text()
-    user_prompt = (prompts_dir / "rag_user.txt").read_text().format(
-        context=context,
-        question=question,
+    user_prompt = (
+        (prompts_dir / "rag_user.txt")
+        .read_text()
+        .format(
+            context=context,
+            question=question,
+        )
     )
     response = litellm.completion(
         model=settings.litellm_model,
@@ -79,7 +83,8 @@ def _generate_answer(question: str, context: str) -> str:
 def run() -> None:
     parser = argparse.ArgumentParser(description="Run RAGAS evaluation")
     parser.add_argument(
-        "--label", default="eval",
+        "--label",
+        default="eval",
         help="Run label used in the report filename and metadata (e.g. phase_1, phase_2)",
     )
     args, _ = parser.parse_known_args()
@@ -168,9 +173,7 @@ def run() -> None:
         )
         sys.exit(1)
     else:
-        console.print(
-            f"[bold green]PASS:[/] faithfulness {faithfulness_score:.3f} >= 0.7"
-        )
+        console.print(f"[bold green]PASS:[/] faithfulness {faithfulness_score:.3f} >= 0.7")
 
 
 if __name__ == "__main__":

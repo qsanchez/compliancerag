@@ -71,10 +71,12 @@ def test_retrieve_score_conversion(mock_embed: MagicMock, mock_get_collection: M
     # distance=0 should give score=1.0, distance=2 should give score=0.0
     collection.query.return_value = {
         "documents": [["text a", "text b"]],
-        "metadatas": [[
-            {"article_number": "Art 1", "regulation": "GDPR", "source_id": "x"},
-            {"article_number": "Art 2", "regulation": "GDPR", "source_id": "y"},
-        ]],
+        "metadatas": [
+            [
+                {"article_number": "Art 1", "regulation": "GDPR", "source_id": "x"},
+                {"article_number": "Art 2", "regulation": "GDPR", "source_id": "y"},
+            ]
+        ],
         "distances": [[0.0, 2.0]],
     }
     mock_get_collection.return_value = collection
@@ -82,5 +84,3 @@ def test_retrieve_score_conversion(mock_embed: MagicMock, mock_get_collection: M
     result = retrieve("query")
     assert result[0]["score"] == pytest.approx(1.0)
     assert result[1]["score"] == pytest.approx(0.0)
-
-

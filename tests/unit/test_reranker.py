@@ -15,6 +15,7 @@ def _make_chunks(n: int) -> list[RetrievedChunk]:
 def reset_model():
     """Reset the cached cross-encoder between tests."""
     import rag.reranker as mod
+
     original = mod._model
     mod._model = None
     yield

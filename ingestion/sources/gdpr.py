@@ -56,8 +56,9 @@ def _parse_article(html: str, chapter: str) -> Document | None:
         return None
 
     # Remove nav / recital suggestion blocks — keep only the normative text
-    for tag in content_div.find_all(class_=["empfehlung-erwaegungsgruende", "page-navigation",
-                                             "link-to-overview", "feedback"]):
+    for tag in content_div.find_all(
+        class_=["empfehlung-erwaegungsgruende", "page-navigation", "link-to-overview", "feedback"]
+    ):
         tag.decompose()
 
     text = _normalize(content_div.get_text())

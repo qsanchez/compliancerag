@@ -55,7 +55,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run the ingestion pipeline.")
     parser.add_argument(
-        "--regulation", default="gdpr",
+        "--regulation",
+        default="gdpr",
         choices=list(_LOADERS),
         help="Regulation to ingest (default: gdpr)",
     )
