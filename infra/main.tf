@@ -68,6 +68,47 @@ variable "rds_instance_class" {
   default     = "db.t3.micro"
 }
 
+variable "bedrock_model_id" {
+  description = "Bedrock model ID for LLM generation"
+  type        = string
+}
+
+variable "database_url" {
+  description = "Full PostgreSQL connection URL including password"
+  type        = string
+  sensitive   = true
+}
+
+variable "athena_s3_output" {
+  description = "S3 URI for Athena query results"
+  type        = string
+  default     = ""
+}
+
+variable "athena_s3_data_bucket" {
+  description = "S3 bucket name for analytics Parquet data"
+  type        = string
+  default     = ""
+}
+
+variable "api_key" {
+  description = "API key for the /chat endpoint (empty = no auth)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "langsmith_api_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "langchain_tracing_v2" {
+  type    = bool
+  default = false
+}
+
 # ── Modules ───────────────────────────────────────────────────────────────────
 
 module "rds" {
@@ -93,6 +134,34 @@ module "athena" {
   environment           = var.environment
   analytics_data_bucket = module.s3.analytics_data_bucket
   athena_results_bucket = module.s3.athena_results_bucket
+}
+
+module "lambda" {
+  source = "./modules/lambda"
+
+  environment           = var.environment
+  aws_region            = var.aws_region
+  vpc_id                = var.vpc_id
+  subnet_ids            = var.private_subnet_ids
+  rds_security_group_id = module.rds.security_group_id
+
+  bedrock_model_id      = var.bedrock_model_id
+  database_url          = var.database_url
+  athena_database       = module.athena.database_name
+  athena_s3_output      = module.s3.athena_results_s3_uri
+  athena_s3_data_bucket = module.s3.analytics_data_bucket
+  api_key               = var.api_key
+  langsmith_api_key     = var.langsmith_api_key
+  langchain_tracing_v2  = var.langchain_tracing_v2
+}
+
+module "api_gateway" {
+  source = "./modules/api_gateway"
+
+  environment          = var.environment
+  aws_region           = var.aws_region
+  lambda_function_name = module.lambda.function_name
+  lambda_function_arn  = module.lambda.function_arn
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
@@ -124,4 +193,19 @@ output "athena_s3_output" {
 output "athena_database" {
   description = "Set as ATHENA_DATABASE env var"
   value       = module.athena.database_name
+}
+
+output "ecr_repository_url" {
+  description = "Set as ECR_REPO for deploy tasks"
+  value       = module.lambda.ecr_repository_url
+}
+
+output "lambda_function_name" {
+  description = "Set as FUNCTION_NAME for deploy:update-lambda"
+  value       = module.lambda.function_name
+}
+
+output "api_endpoint" {
+  description = "API Gateway invoke URL"
+  value       = module.api_gateway.api_endpoint
 }

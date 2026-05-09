@@ -68,6 +68,23 @@ tasks:
     cmds:
       - "{{.PYTHON}} -m analytics.loaders.gdpr_fines"
 
+  deploy:build:
+    desc: "Build Lambda container image (tag: compliancerag-dev or compliancerag-{ENV})"
+    cmds:
+      - docker build -t compliancerag-{{.ENV | default "dev"}}:latest .
+
+  deploy:push:
+    desc: "Authenticate to ECR and push image (requires ECR_REPO env var from: terraform output ecr_repository_url)"
+    cmds:
+      - aws ecr get-login-password --region {{.AWS_REGION | default "eu-west-1"}} | docker login --username AWS --password-stdin $ECR_REPO
+      - docker tag compliancerag-{{.ENV | default "dev"}}:latest $ECR_REPO:latest
+      - docker push $ECR_REPO:latest
+
+  deploy:update-lambda:
+    desc: "Update Lambda to use the latest ECR image (requires ECR_REPO and FUNCTION_NAME env vars)"
+    cmds:
+      - aws lambda update-function-code --function-name $FUNCTION_NAME --image-uri $ECR_REPO:latest
+
   lint:
     desc: "Run ruff linter"
     cmds:
