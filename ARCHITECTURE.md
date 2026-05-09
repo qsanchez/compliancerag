@@ -1,8 +1,8 @@
 # ComplianceRAG — Architecture Document
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
-> Version: 0.1 — Initial  
-> Status: Phase 2 in progress
+> Version: 0.4 — Phase 4 in progress  
+> Status: Phases 1–3 complete; Phase 4 in progress (audit logging done, Lambda + API Gateway next)
 
 ---
 
@@ -225,7 +225,7 @@ compliancerag/
 **Exit criterion:** CI green on every PR; one-command deploy to AWS; CloudWatch dashboard live.
 
 - [x] FastAPI hardening: structured logging (structlog/JSON) and error handling done; API key auth and rate limiting delegated to API Gateway in production (local dev guard in `APIKeyMiddleware` retained)
-- [ ] Audit logging — every query logged with user, timestamp, retrieved chunks, model version, response (Postgres)
+- [x] Audit logging — every query logged to Postgres `audit_log` table (question, route, answer, citations, has_chart, model_version, latency_ms, injection_blocked); no-op when `DATABASE_URL` unset
 - [ ] AWS Lambda + API Gateway deployment (Terraform `modules/lambda`)
 - [ ] CloudWatch dashboard: latency, cost per query, error rate (after Lambda)
 - [x] GitHub Actions CI: lint, format, typecheck, and tests on every PR (no deploy; see ADR 008 for planned prompt injection improvement)
