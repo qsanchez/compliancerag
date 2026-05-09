@@ -224,13 +224,12 @@ compliancerag/
 **Goal:** Deployable to AWS with full observability, CI/CD, and audit trail.  
 **Exit criterion:** CI green on every PR; one-command deploy to AWS; CloudWatch dashboard live.
 
-- [ ] FastAPI hardening: API key auth, rate limiting, structured logging, error handling
-- [ ] Audit logging — every query logged with user, timestamp, retrieved chunks, model version, response
+- [x] FastAPI hardening: structured logging (structlog/JSON) and error handling done; API key auth and rate limiting delegated to API Gateway in production (local dev guard in `APIKeyMiddleware` retained)
+- [ ] Audit logging — every query logged with user, timestamp, retrieved chunks, model version, response (Postgres)
 - [ ] AWS Lambda + API Gateway deployment (Terraform `modules/lambda`)
-- [ ] CloudWatch dashboard: latency, cost per query, error rate
+- [ ] CloudWatch dashboard: latency, cost per query, error rate (after Lambda)
 - [x] GitHub Actions CI: lint, format, typecheck, and tests on every PR (no deploy; see ADR 008 for planned prompt injection improvement)
-- [ ] Architecture diagram (Mermaid) in `docs/diagrams/`
-- [ ] ADRs complete (`docs/adr/`)
+- [ ] ADRs complete (`docs/adr/` — 001–007 are empty placeholders)
 
 ---
 
