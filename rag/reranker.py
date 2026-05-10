@@ -1,8 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from langsmith import traceable
-from sentence_transformers import CrossEncoder
 
 from config import get_settings
 from rag.retriever import RetrievedChunk
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 _model: CrossEncoder | None = None
 
@@ -13,6 +19,8 @@ FETCH_MULTIPLIER = 3
 def _get_model() -> CrossEncoder:
     global _model
     if _model is None:
+        from sentence_transformers import CrossEncoder  # noqa: PLC0415
+
         _model = CrossEncoder(get_settings().reranker_model)
     return _model
 

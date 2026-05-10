@@ -107,7 +107,7 @@ resource "aws_iam_role_policy" "lambda" {
 
 resource "aws_security_group" "lambda" {
   name        = "${local.name_prefix}-lambda"
-  description = "ComplianceRAG Lambda — outbound to RDS and AWS services"
+  description = "ComplianceRAG Lambda - outbound to RDS and AWS services"
   vpc_id      = var.vpc_id
 
   egress {
@@ -165,6 +165,7 @@ resource "aws_lambda_function" "this" {
   role          = aws_iam_role.lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.this.repository_url}:latest"
+  architectures = ["arm64"]
   timeout       = var.lambda_timeout_s
   memory_size   = var.lambda_memory_mb
 
@@ -188,8 +189,10 @@ resource "aws_lambda_function" "this" {
       LANGSMITH_API_KEY          = var.langsmith_api_key
       LANGSMITH_PROJECT          = var.langsmith_project
       LANGCHAIN_TRACING_V2       = tostring(var.langchain_tracing_v2)
-      RERANKER_ENABLED           = "true"
-      RERANKER_MODEL             = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      RERANKER_ENABLED              = "true"
+      RERANKER_MODEL                = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      LITELLM_LOCAL_MODEL_COST_MAP  = "True"
+      MPLCONFIGDIR                  = "/tmp"
     }
   }
 

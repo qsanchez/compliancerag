@@ -2,7 +2,7 @@
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
 > Version: 0.4 — Phase 4 in progress  
-> Status: Phases 1–3 complete; Phase 4 in progress (audit logging done, Lambda + API Gateway next)
+> Status: Phases 1–3 complete; Phase 4 in progress (audit logging + Lambda + API Gateway done; CloudWatch dashboard + ADRs 001/003/004 remaining)
 
 ---
 
@@ -226,10 +226,10 @@ compliancerag/
 
 - [x] FastAPI hardening: structured logging (structlog/JSON) and error handling done; API key auth and rate limiting delegated to API Gateway in production (local dev guard in `APIKeyMiddleware` retained)
 - [x] Audit logging — every query logged to Postgres `audit_log` table (question, route, answer, citations, has_chart, model_version, latency_ms, injection_blocked); no-op when `DATABASE_URL` unset
-- [ ] AWS Lambda + API Gateway deployment (Terraform `modules/lambda`)
-- [ ] CloudWatch dashboard: latency, cost per query, error rate (after Lambda)
+- [x] AWS Lambda + API Gateway deployment (Terraform `modules/lambda` + `modules/api_gateway`, wired in `main.tf`)
+- [ ] CloudWatch dashboard: latency, cost per query, error rate (log groups exist; no `aws_cloudwatch_dashboard` resource yet)
 - [x] GitHub Actions CI: lint, format, typecheck, and tests on every PR (no deploy; see ADR 008 for planned prompt injection improvement)
-- [ ] ADRs complete (`docs/adr/` — 001–007 are empty placeholders)
+- [ ] ADRs complete (`docs/adr/` — 001, 003, 004 are still empty placeholders)
 
 ---
 

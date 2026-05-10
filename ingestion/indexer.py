@@ -1,7 +1,6 @@
 import json
 from typing import Any
 
-import chromadb
 import psycopg
 from pgvector.psycopg import register_vector
 
@@ -10,18 +9,20 @@ from ingestion.chunker import Chunk
 
 # ── Chroma backend ────────────────────────────────────────────────────────────
 
-_chroma_client: chromadb.ClientAPI | None = None
+_chroma_client: Any = None
 
 
-def _get_chroma_client() -> chromadb.ClientAPI:
+def _get_chroma_client() -> Any:
     global _chroma_client
     if _chroma_client is None:
+        import chromadb  # noqa: PLC0415 — lazy import, not available in Lambda image
+
         settings = get_settings()
         _chroma_client = chromadb.HttpClient(host=settings.chroma_host, port=settings.chroma_port)
     return _chroma_client
 
 
-def get_collection(name: str = "regulations") -> chromadb.Collection:
+def get_collection(name: str = "regulations") -> Any:
     return _get_chroma_client().get_or_create_collection(
         name=name,
         metadata={"hnsw:space": "cosine"},

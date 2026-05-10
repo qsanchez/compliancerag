@@ -4,9 +4,8 @@ import warnings
 from pathlib import Path
 
 import httpx
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
-from ingestion.sources.gdpr import Document
+from ingestion.types import Document
 
 _HEADERS = {
     "User-Agent": (
@@ -45,6 +44,8 @@ def _parse_full_text(html: str, regulation: str) -> list[Document]:
       div.eli-subdivision containing p.oj-ti-art — one article each
       div.eli-title       — article subtitle inside the subdivision
     """
+    from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning  # noqa: PLC0415
+
     warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
     soup = BeautifulSoup(html, "lxml")
     documents: list[Document] = []
@@ -53,7 +54,7 @@ def _parse_full_text(html: str, regulation: str) -> list[Document]:
     current_chapter_name = ""
 
     # Collect relevant nodes in document order: chapter headings + article subdivisions
-    def _is_relevant(tag: BeautifulSoup) -> bool:
+    def _is_relevant(tag: object) -> bool:
         cls = tag.get("class") or []
         if tag.name == "p" and ("oj-ti-section-1" in cls or "oj-ti-section-2" in cls):
             return True

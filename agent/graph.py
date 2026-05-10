@@ -46,4 +46,4 @@ def _build() -> CompiledStateGraph:
     return g.compile()
 
 
-graph = _build()
+graph: CompiledStateGraph = _build()

@@ -16,7 +16,7 @@ locals {
 resource "aws_db_parameter_group" "this" {
   name        = "${local.name_prefix}-pg16"
   family      = "postgres16"
-  description = "ComplianceRAG PostgreSQL 16 — pgvector tuning"
+  description = "ComplianceRAG PostgreSQL 16 - pgvector tuning"
 
   parameter {
     name  = "work_mem"
@@ -95,7 +95,7 @@ resource "aws_db_instance" "this" {
   multi_az            = var.multi_az
   publicly_accessible = false
 
-  backup_retention_period = 7
+  backup_retention_period = var.backup_retention_days
   backup_window           = "03:00-04:00"
   maintenance_window      = "mon:04:00-mon:05:00"
 

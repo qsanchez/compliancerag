@@ -1,10 +1,10 @@
 import re
 import time
 from pathlib import Path
-from typing import TypedDict
 
 import httpx
-from bs4 import BeautifulSoup
+
+from ingestion.types import Document
 
 # Source: gdpr-info.eu — EUR-Lex blocks programmatic access via AWS WAF.
 # gdpr-info.eu republishes the official text structured by article, which
@@ -13,15 +13,6 @@ BASE_URL = "https://gdpr-info.eu"
 CACHE_DIR = Path(".cache/gdpr")
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; compliancerag-ingestion/1.0)"}
 _REQUEST_DELAY = 0.5  # seconds between requests to be polite
-
-
-class Document(TypedDict):
-    id: str
-    text: str
-    article_number: str
-    title: str
-    regulation: str
-    chapter: str
 
 
 def _normalize(text: str) -> str:
@@ -40,6 +31,8 @@ def _fetch(client: httpx.Client, url: str, cache_path: Path) -> str:
 
 
 def _parse_article(html: str, chapter: str) -> Document | None:
+    from bs4 import BeautifulSoup  # noqa: PLC0415
+
     soup = BeautifulSoup(html, "lxml")
 
     h1 = soup.find("h1", class_="entry-title")
@@ -77,6 +70,8 @@ def _parse_article(html: str, chapter: str) -> Document | None:
 
 
 def _parse_recital(html: str, recital_num: int) -> Document | None:
+    from bs4 import BeautifulSoup  # noqa: PLC0415
+
     soup = BeautifulSoup(html, "lxml")
     content_div = soup.find("div", class_="entry-content")
     if not content_div:
@@ -98,6 +93,8 @@ def _parse_recital(html: str, recital_num: int) -> Document | None:
 
 def _get_article_index(client: httpx.Client) -> list[tuple[str, str]]:
     """Return list of (article_url, chapter_name) from the table of contents."""
+    from bs4 import BeautifulSoup  # noqa: PLC0415
+
     html = _fetch(client, BASE_URL + "/", CACHE_DIR / "index.html")
     soup = BeautifulSoup(html, "lxml")
 

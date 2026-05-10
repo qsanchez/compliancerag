@@ -71,12 +71,14 @@ variable "rds_instance_class" {
 variable "bedrock_model_id" {
   description = "Bedrock model ID for LLM generation"
   type        = string
+  default     = ""
 }
 
 variable "database_url" {
   description = "Full PostgreSQL connection URL including password"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "athena_s3_output" {
