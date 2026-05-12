@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import litellm
 from datasets import Dataset
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.embeddings import Embeddings
@@ -17,8 +16,8 @@ from rich.console import Console
 from rich.table import Table
 
 from config import get_settings
-from ingestion import embedder
-from rag import context_builder, reranker, retriever
+from rag import pipeline
+from vectorstore import embedder
 
 console = Console()
 
@@ -58,28 +57,6 @@ def _make_ragas_llm() -> LangchainLLMWrapper:
     return LangchainLLMWrapper(ChatLiteLLM(model=settings.litellm_model))
 
 
-def _generate_answer(question: str, context: str) -> str:
-    settings = get_settings()
-    prompts_dir = Path(__file__).parent.parent / "rag" / "prompts"
-    system_prompt = (prompts_dir / "rag_system.txt").read_text()
-    user_prompt = (
-        (prompts_dir / "rag_user.txt")
-        .read_text()
-        .format(
-            context=context,
-            question=question,
-        )
-    )
-    response = litellm.completion(
-        model=settings.litellm_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    return response.choices[0].message.content or ""
-
-
 def run() -> None:
     parser = argparse.ArgumentParser(description="Run RAGAS evaluation")
     parser.add_argument(
@@ -102,17 +79,11 @@ def run() -> None:
     for i, item in enumerate(golden, start=1):
         q = item["question"]
         console.print(f"  [{i}/{len(golden)}] {q[:80]}...")
-        settings = get_settings()
-        fetch_k = 5 * reranker.FETCH_MULTIPLIER if settings.reranker_enabled else 5
-        chunks = retriever.retrieve(q, top_k=fetch_k)
-        if settings.reranker_enabled:
-            chunks = reranker.rerank(q, chunks, top_k=5)
-        ctx = context_builder.build(chunks)
-        answer = _generate_answer(q, ctx["context"])
+        result = pipeline.run(q)
 
         questions.append(q)
-        answers.append(answer)
-        contexts.append([c["text"] for c in chunks])
+        answers.append(result["answer"])
+        contexts.append([c["text"] for c in result["chunks"]])
         ground_truths.append(item["ground_truth"])
 
     dataset = Dataset.from_dict(
@@ -155,7 +126,6 @@ def run() -> None:
         "num_questions": len(golden),
         "regulations": _detect_regulations(golden),
         "retrieval": {
-            "vector_store": settings.vector_store,
             "reranker_enabled": settings.reranker_enabled,
             "reranker_model": settings.reranker_model if settings.reranker_enabled else None,
         },
