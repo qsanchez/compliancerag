@@ -52,4 +52,8 @@ data/
 
 # Generated analytics artifacts (Parquet files built by analytics:load)
 analytics/datasets/*.parquet
-.$compliancerag.drawio.bkp
+analytics_etl/datasets/*.parquet
+
+# draw.io temp/backup files
+*.drawio.dtmp
+*.drawio.bkp

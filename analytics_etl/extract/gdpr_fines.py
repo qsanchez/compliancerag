@@ -1,13 +1,15 @@
-"""Download the public GDPR Enforcement Tracker CSV from enforcementtracker.com.
+"""Download GDPR fines data from the enforcementtracker.com internal JSON feed.
 
-Saves the raw file to analytics_etl/datasets/gdpr_fines_raw.csv.
+Saves normalised data to analytics_etl/datasets/gdpr_fines_raw.csv.
 Run via: task analytics:extract
 Prerequisite for: task analytics:load
 """
 
+import re
 from pathlib import Path
 
 import httpx
+import pandas as pd
 from rich.console import Console
 
 console = Console()
@@ -15,63 +17,64 @@ console = Console()
 _DATASETS_DIR = Path(__file__).parent.parent / "datasets"
 _RAW_CSV_PATH = _DATASETS_DIR / "gdpr_fines_raw.csv"
 
-# enforcementtracker.com exports the full dataset as a CSV download
-_DOWNLOAD_URL = "https://www.enforcementtracker.com/?export=csv"
+# Internal DataTables JSON feed — returns all rows as a {"data": [[...]]} object
+_JSON_URL = "https://www.enforcementtracker.com/data4sfk3j4hwe324kjhfdwe.json"
 
-# Column mapping from enforcementtracker export → our canonical schema
-_COLUMN_MAP = {
-    "Date": "decision_date",
-    "Country": "country",
-    "Authority": "authority",
-    "Fine (EUR)": "fine_amount_eur",
-    "Controller/Processor": "controller",
-    "Sector": "sector",
-    "Quoted Art.": "articles_violated",
-    "Type": "violation_type",
-    "Summary": "summary",
-}
+# Column positions in each row array (13 elements per row)
+_COL_COUNTRY = 2
+_COL_AUTHORITY = 3
+_COL_DATE = 4
+_COL_FINE = 5
+_COL_CONTROLLER = 6
+_COL_SECTOR = 7
+_COL_ARTICLES = 8
+_COL_TYPE = 9
+_COL_SUMMARY = 10
 
 
-def download(url: str = _DOWNLOAD_URL, dest: Path = _RAW_CSV_PATH) -> Path:
-    """Fetch the CSV from enforcementtracker.com and save to dest."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with httpx.stream("GET", url, follow_redirects=True, timeout=60) as response:
-        response.raise_for_status()
-        with dest.open("wb") as f:
-            for chunk in response.iter_bytes(chunk_size=65536):
-                f.write(chunk)
-    return dest
+def _extract_country(raw: str) -> str:
+    """Strip HTML img tag and extract the country name text."""
+    return re.sub(r"<[^>]+>", "", raw).strip()
 
 
-def normalise(raw_path: Path = _RAW_CSV_PATH, dest: Path = _RAW_CSV_PATH) -> Path:
-    """Rename columns to match our schema and drop unneeded ones in-place."""
-    import pandas as pd
-
-    df = pd.read_csv(raw_path, encoding="utf-8", on_bad_lines="skip")
-
-    # Keep only columns we have a mapping for
-    available = {k: v for k, v in _COLUMN_MAP.items() if k in df.columns}
-    df = df[list(available.keys())].rename(columns=available)
-
-    # Ensure all schema columns exist (fill missing with empty string)
-    for col in _COLUMN_MAP.values():
-        if col not in df.columns:
-            df[col] = ""
-
-    df.to_csv(dest, index=False, encoding="utf-8")
-    return dest
+def _parse_fine(raw: str) -> int:
+    """Convert '4,800' or '50,000,000' to integer."""
+    cleaned = re.sub(r"[^\d]", "", raw)
+    return int(cleaned) if cleaned else 0
 
 
-def run(url: str = _DOWNLOAD_URL) -> Path:
-    console.print(f"[bold]Downloading GDPR fines CSV from[/] [cyan]{url}[/]")
-    raw_path = download(url)
-    size_kb = raw_path.stat().st_size // 1024
-    console.print(f"  Saved to [cyan]{raw_path}[/] ({size_kb} KB)")
+def fetch(url: str = _JSON_URL) -> list[dict]:
+    response = httpx.get(url, follow_redirects=True, timeout=60)
+    response.raise_for_status()
+    rows = response.json()["data"]
+    return [
+        {
+            "decision_date": row[_COL_DATE],
+            "country": _extract_country(row[_COL_COUNTRY]),
+            "authority": row[_COL_AUTHORITY],
+            "fine_amount_eur": _parse_fine(row[_COL_FINE]),
+            "controller": row[_COL_CONTROLLER],
+            "sector": row[_COL_SECTOR],
+            "articles_violated": row[_COL_ARTICLES],
+            "violation_type": row[_COL_TYPE],
+            "summary": row[_COL_SUMMARY],
+        }
+        for row in rows
+    ]
 
-    console.print("[bold]Normalising column names...[/]")
-    normalise(raw_path)
-    console.print(f"  Done — [cyan]{raw_path}[/] ready for [bold]task analytics:load[/]")
-    return raw_path
+
+def run(url: str = _JSON_URL) -> Path:
+    console.print(f"[bold]Fetching GDPR fines JSON from[/] [cyan]{url}[/]")
+    records = fetch(url)
+    console.print(f"  Retrieved [green]{len(records)}[/] fines")
+
+    _RAW_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame(records)
+    df.to_csv(_RAW_CSV_PATH, index=False, encoding="utf-8")
+    size_kb = _RAW_CSV_PATH.stat().st_size // 1024
+    console.print(f"  Saved to [cyan]{_RAW_CSV_PATH}[/] ({size_kb} KB)")
+    console.print("  Ready for [bold]task analytics:load[/]")
+    return _RAW_CSV_PATH
 
 
 if __name__ == "__main__":

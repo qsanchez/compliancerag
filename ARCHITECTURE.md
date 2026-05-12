@@ -1,8 +1,8 @@
 # ComplianceRAG — Architecture Document
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
-> Version: 0.5 — Phase 5 pending  
-> Status: Phases 1–4 complete (CloudWatch dashboard remaining); Phase 5 defined
+> Version: 0.6 — Phase 5 complete  
+> Status: Phases 1–5 complete (CloudWatch dashboard remaining)
 
 ---
 
@@ -237,35 +237,18 @@ compliancerag/
 - [x] ADRs complete (`docs/adr/` — 001, 003, 004, 005)
 - [ ] CloudWatch dashboard: latency, cost per query, error rate
 
-### Phase 5 — Integration Tests + Analytics Extract (next)
+### Phase 5 — Integration Tests + Analytics Extract (complete)
 **Goal:** Confidence that the full stack works end-to-end against real infrastructure; real enforcement data flowing through the analytics pipeline.  
-**Exit criterion:** All integration tests green with local infra running; real GDPR fines CSV downloaded and queryable via Athena.
+**Exit criterion:** All integration tests green with local infra running; real GDPR fines data downloaded and queryable via Athena.
 
-#### Integration tests (`tests/integration/`)
-
-Tests are split by infrastructure dependency:
-
-**Local infra only (`task local_infra:up`)**
-- `test_indexer.py` — ingest a small fixture batch into real pgvector; verify rows exist in `embeddings` table
-- `test_audit_logger.py` — write an `AuditRecord` to real Postgres; query `audit_log` and assert the row
-
-**Requires AWS (Bedrock + pgvector)**
-- `test_retriever.py` — embed a real query via Bedrock Titan, retrieve from pgvector, assert `RetrievedChunk` list with correct shape and score range
-- `test_pipeline.py` — call `pipeline.run()` end-to-end; assert `answer` is non-empty string and `citations` is a list
-
-**Requires AWS (Athena + S3)**
-- `test_query_metrics.py` — run a real SELECT against the Athena fines table; assert rows returned match schema
-
-**Requires local API running (`task api:up`)**
-- `test_api.py` — `GET /health` returns 200; `POST /chat` with a GDPR question returns 200 with `answer` and `citations` fields
-
-#### Analytics extract (`analytics_etl/extract/`)
-
-Add a download step before the existing `csv_to_parquet` → `upload_to_s3` flow:
-
-- `analytics_etl/extract/gdpr_fines.py` — fetch the public GDPR Enforcement Tracker CSV from enforcementtracker.com, save to `analytics_etl/datasets/gdpr_fines_raw.csv`
-- Wire into `task analytics:extract` (new task) and document as prerequisite to `task analytics:load`
-- The committed `gdpr_fines_sample.csv` becomes a small fixture for local testing only; real data flows through extract → load
+- [x] Integration tests (`tests/integration/`) — 6 test files split by infrastructure dependency:
+  - `test_indexer.py` + `test_audit_logger.py` — local infra only (`task local_infra:up`)
+  - `test_retriever.py` + `test_pipeline.py` — require AWS Bedrock + pgvector with data loaded
+  - `test_query_metrics.py` — requires Athena + analytics data loaded
+  - `test_api.py` — requires running API (`task api:up`)
+- [x] Analytics extract (`analytics_etl/extract/gdpr_fines.py`) — fetches 3,100+ real fines from the enforcementtracker.com internal JSON feed, normalises to schema, saves to `analytics_etl/datasets/gdpr_fines_raw.csv`
+- [x] `task analytics:extract` wired up as prerequisite to `task analytics:load`
+- [x] Real GDPR fines data (3,142 rows) loaded to S3 and queryable via Athena
 
 ---
 
