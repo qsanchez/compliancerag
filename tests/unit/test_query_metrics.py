@@ -1,6 +1,6 @@
 import pytest
 
-from agent.tools.query_metrics import _validate_sql
+from analytics_query.query_metrics import _validate_sql
 
 
 def test_select_query_passes() -> None:

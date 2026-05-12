@@ -1,6 +1,7 @@
 import litellm
 import structlog
 from fastapi import FastAPI
+from mangum import Mangum
 
 from api.middleware.auth import APIKeyMiddleware
 from api.middleware.logging import LoggingMiddleware
@@ -28,3 +29,5 @@ app.add_middleware(LoggingMiddleware)
 
 app.include_router(health.router)
 app.include_router(chat.router)
+
+handler = Mangum(app, lifespan="off")

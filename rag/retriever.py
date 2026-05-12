@@ -3,8 +3,7 @@ from typing import Any, TypedDict
 
 from langsmith import traceable
 
-from config import get_settings
-from ingestion import embedder, indexer
+from vectorstore import client, embedder
 
 # Reciprocal Rank Fusion constant — higher k reduces the impact of top-rank
 # dominance; 60 is the standard value from the original RRF paper.
@@ -17,36 +16,12 @@ class RetrievedChunk(TypedDict):
     score: float
 
 
-# ── Chroma (pure semantic) ────────────────────────────────────────────────────
-
-
-def _retrieve_chroma(query_embedding: list[float], top_k: int) -> list[RetrievedChunk]:
-    collection = indexer.get_collection()
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        include=["documents", "metadatas", "distances"],
-    )
-    chunks: list[RetrievedChunk] = []
-    for doc, meta, dist in zip(
-        results["documents"][0],
-        results["metadatas"][0],
-        results["distances"][0],
-    ):
-        # Chroma cosine distance: 0 = identical, 2 = opposite → convert to similarity
-        chunks.append(RetrievedChunk(text=doc, metadata=meta, score=1.0 - (dist / 2.0)))
-    return chunks
-
-
-# ── pgvector (hybrid: semantic + keyword via pg_trgm, fused with RRF) ────────
-
-
-def _retrieve_pgvector(
-    query_embedding: list[float], query: str, top_k: int
-) -> list[RetrievedChunk]:
+@traceable(name="retrieve", run_type="retriever")
+def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
+    query_embedding = embedder.embed([query])[0]
     fetch_k = top_k * 3  # fetch more candidates from each leg before fusion
 
-    with indexer._get_pgvector_conn() as conn:
+    with client._get_pgvector_conn() as conn:
         with conn.cursor() as cur:
             # Semantic leg: cosine ANN via HNSW
             cur.execute(
@@ -76,7 +51,7 @@ def _retrieve_pgvector(
             )
             keyword_rows = cur.fetchall()
 
-    # Build id → row maps for later lookup
+    # Build id → row map for later lookup
     rows_by_id: dict[str, tuple] = {}
     for row in semantic_rows + keyword_rows:
         rows_by_id[row[0]] = row
@@ -90,7 +65,6 @@ def _retrieve_pgvector(
         doc_id = row[0]
         rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (_RRF_K + rank)
 
-    # Sort by fused score descending, return top_k
     top_ids = sorted(rrf_scores, key=rrf_scores.__getitem__, reverse=True)[:top_k]
 
     return [
@@ -105,14 +79,3 @@ def _retrieve_pgvector(
         )
         for doc_id in top_ids
     ]
-
-
-# ── Public interface ──────────────────────────────────────────────────────────
-
-
-@traceable(name="retrieve", run_type="retriever")
-def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
-    query_embedding = embedder.embed([query])[0]
-    if get_settings().vector_store == "pgvector":
-        return _retrieve_pgvector(query_embedding, query, top_k)
-    return _retrieve_chroma(query_embedding, top_k)

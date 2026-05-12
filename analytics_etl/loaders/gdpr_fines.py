@@ -8,18 +8,19 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from rich.console import Console
 
-from analytics.schemas.gdpr_fines import SCHEMA
+from analytics_etl.schemas.gdpr_fines import SCHEMA
 from config import get_settings
 
 console = Console()
 
 _DATASETS_DIR = Path(__file__).parent.parent / "datasets"
-_CSV_PATH = _DATASETS_DIR / "gdpr_fines_sample.csv"
+_RAW_CSV_PATH = _DATASETS_DIR / "gdpr_fines_raw.csv"  # written by analytics:extract
+_SAMPLE_CSV_PATH = _DATASETS_DIR / "gdpr_fines_sample.csv"  # fallback for local testing
 _PARQUET_PATH = _DATASETS_DIR / "gdpr_fines.parquet"
 _S3_KEY = "analytics/gdpr_fines/gdpr_fines.parquet"
 
 
-def csv_to_parquet(csv_path: Path = _CSV_PATH, parquet_path: Path = _PARQUET_PATH) -> Path:
+def csv_to_parquet(csv_path: Path = _SAMPLE_CSV_PATH, parquet_path: Path = _PARQUET_PATH) -> Path:
     df = pd.read_csv(csv_path)
     df["decision_date"] = pd.to_datetime(df["decision_date"], errors="coerce").dt.date
     df["fine_amount_eur"] = (
@@ -50,8 +51,14 @@ def upload_to_s3(parquet_path: Path = _PARQUET_PATH) -> str:
 
 
 def run() -> None:
+    csv_path = _RAW_CSV_PATH if _RAW_CSV_PATH.exists() else _SAMPLE_CSV_PATH
+    if csv_path == _SAMPLE_CSV_PATH:
+        console.print(
+            "[yellow]gdpr_fines_raw.csv not found — using sample data. "
+            "Run task analytics:extract first for real data.[/]"
+        )
     console.print("[bold]Converting CSV → Parquet...[/]")
-    parquet_path = csv_to_parquet()
+    parquet_path = csv_to_parquet(csv_path)
     size_kb = parquet_path.stat().st_size // 1024
     console.print(f"  Written to [cyan]{parquet_path}[/] ({size_kb} KB)")
 

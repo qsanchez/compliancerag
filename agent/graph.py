@@ -5,9 +5,9 @@ from langgraph.graph.state import CompiledStateGraph
 
 from agent.router import classify
 from agent.state import AgentState
-from agent.tools.generate_chart import generate_chart
-from agent.tools.query_metrics import query_metrics
-from agent.tools.search_regulations import search_regulations
+from analytics_query.generate_chart import generate_chart
+from analytics_query.query_metrics import query_metrics
+from rag import pipeline
 
 
 def _router_node(state: AgentState) -> dict:
@@ -15,7 +15,7 @@ def _router_node(state: AgentState) -> dict:
 
 
 def _rag_node(state: AgentState) -> dict:
-    result = search_regulations(state["question"], state.get("history"))
+    result = pipeline.run(state["question"], history=state.get("history"))
     return {"answer": result["answer"], "citations": result["citations"]}
 
 

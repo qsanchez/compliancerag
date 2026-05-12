@@ -8,7 +8,7 @@ from pyathena import connect
 
 from config import get_settings
 
-_PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+_PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
 def _load_prompt(name: str) -> str:

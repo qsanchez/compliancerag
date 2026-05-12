@@ -16,7 +16,6 @@ dependencies = [
     "langchain-core>=0.2.0",
     "langsmith>=0.1.90",
     # Vector stores
-    "chromadb>=0.5.0",
     "pgvector>=0.3.0",
     "psycopg[binary]>=3.1.0",
     # Document processing
@@ -61,7 +60,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["agent", "analytics", "api", "evaluation", "ingestion", "observability", "rag"]
+packages = ["agent", "analytics_etl", "analytics_query", "api", "audit", "evaluation", "ingestion", "observability", "rag", "vectorstore"]
 
 [tool.ruff]
 line-length = 100
@@ -74,6 +73,7 @@ select = ["E", "F", "I", "UP"]
 python_version = "3.11"
 strict = false
 ignore_missing_imports = true
+namespace_packages = true
 
 # Third-party libraries with incomplete stubs — suppress noise, not our code
 [[tool.mypy.overrides]]

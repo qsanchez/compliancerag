@@ -21,10 +21,10 @@ def _initial_state(question: str) -> AgentState:
 
 @patch("agent.graph.classify", return_value="rag")
 @patch(
-    "agent.graph.search_regulations",
-    return_value={"answer": _RAG_ANSWER, "citations": [_RAG_CITATION]},
+    "agent.graph.pipeline.run",
+    return_value={"answer": _RAG_ANSWER, "citations": [_RAG_CITATION], "chunks": []},
 )
-def test_rag_path_sets_answer_and_citations(mock_search, mock_classify) -> None:
+def test_rag_path_sets_answer_and_citations(mock_run, mock_classify) -> None:
     result = graph.invoke(_initial_state("What does Article 32 require?"))
 
     assert result["route"] == "rag"
@@ -34,13 +34,13 @@ def test_rag_path_sets_answer_and_citations(mock_search, mock_classify) -> None:
 
 @patch("agent.graph.classify", return_value="rag")
 @patch(
-    "agent.graph.search_regulations",
-    return_value={"answer": _RAG_ANSWER, "citations": []},
+    "agent.graph.pipeline.run",
+    return_value={"answer": _RAG_ANSWER, "citations": [], "chunks": []},
 )
-def test_rag_path_calls_search_with_question(mock_search, mock_classify) -> None:
+def test_rag_path_calls_search_with_question(mock_run, mock_classify) -> None:
     question = "What does Article 32 require?"
     graph.invoke(_initial_state(question))
-    mock_search.assert_called_once_with(question, [])
+    mock_run.assert_called_once_with(question, history=[])
 
 
 @patch("agent.graph.classify", return_value="analytics")
@@ -77,15 +77,18 @@ def test_analytics_path_includes_chart_when_rows_present(
 
 @patch("agent.graph.classify", return_value="rag")
 @patch(
-    "agent.graph.search_regulations",
-    return_value={"answer": "DORA requires ICT risk management.", "citations": ["Art. 6, DORA"]},
+    "agent.graph.pipeline.run",
+    return_value={
+        "answer": "DORA requires ICT risk management.",
+        "citations": ["Art. 6, DORA"],
+        "chunks": [],
+    },
 )
-def test_history_passed_to_search_regulations(mock_search, mock_classify) -> None:
+def test_history_passed_to_pipeline(mock_run, mock_classify) -> None:
     state = _initial_state("What else does it require?")
     state["history"] = [
         {"role": "user", "content": "What is DORA?"},
         {"role": "assistant", "content": "DORA is the Digital Operational Resilience Act."},
     ]
     graph.invoke(state)
-    _, call_history = mock_search.call_args[0]
-    assert len(call_history) == 2
+    assert len(mock_run.call_args.kwargs["history"]) == 2

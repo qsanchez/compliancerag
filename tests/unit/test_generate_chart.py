@@ -1,6 +1,6 @@
 import base64
 
-from agent.tools.generate_chart import generate_chart
+from analytics_query.generate_chart import generate_chart
 
 
 def _year_rows() -> list[dict]:

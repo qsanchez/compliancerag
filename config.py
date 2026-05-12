@@ -14,10 +14,7 @@ class Settings(BaseSettings):
     bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
 
     # Vector store
-    vector_store: str = "chroma"
     database_url: str = ""
-    chroma_host: str = "localhost"
-    chroma_port: int = 8001
 
     # Analytics
     athena_database: str = "compliancerag"

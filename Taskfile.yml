@@ -6,11 +6,9 @@ vars:
 
 tasks:
   ingest:
-    desc: "Run the full document ingestion pipeline (default: GDPR only, local Chroma)"
+    desc: "Run the full document ingestion pipeline (default: GDPR only)"
     cmds:
       - "{{.PYTHON}} -m ingestion.pipeline"
-    env:
-      VECTOR_STORE: "{{.VECTOR_STORE | default \"chroma\"}}"
 
   eval:
     desc: "Run RAGAS evaluation against the golden dataset"
@@ -40,51 +38,6 @@ tasks:
     env:
       LANGCHAIN_TRACING_V2: "false"
 
-  test:regression:
-    desc: "Run regression tests only"
-    cmds:
-      - uv run pytest tests/regression/ -v
-    env:
-      LANGCHAIN_TRACING_V2: "false"
-
-  dev:
-    desc: "Start the FastAPI development server with hot reload"
-    cmds:
-      - "{{.UVICORN}} api.main:app --host 0.0.0.0 --port 8000 --reload"
-
-  infra:up:
-    desc: "Start local infrastructure (Postgres + pgvector + Chroma)"
-    cmds:
-      - docker compose up -d
-      - docker compose ps
-
-  infra:down:
-    desc: "Stop local infrastructure"
-    cmds:
-      - docker compose down
-
-  analytics:load:
-    desc: "Convert GDPR fines CSV → Parquet and upload to S3 (requires ATHENA_S3_DATA_BUCKET)"
-    cmds:
-      - "{{.PYTHON}} -m analytics.loaders.gdpr_fines"
-
-  deploy:build:
-    desc: "Build Lambda container image (tag: compliancerag-dev or compliancerag-{ENV})"
-    cmds:
-      - docker build -t compliancerag-{{.ENV | default "dev"}}:latest .
-
-  deploy:push:
-    desc: "Authenticate to ECR and push image (requires ECR_REPO env var from: terraform output ecr_repository_url)"
-    cmds:
-      - aws ecr get-login-password --region {{.AWS_REGION | default "eu-west-1"}} | docker login --username AWS --password-stdin $ECR_REPO
-      - docker tag compliancerag-{{.ENV | default "dev"}}:latest $ECR_REPO:latest
-      - docker push $ECR_REPO:latest
-
-  deploy:update-lambda:
-    desc: "Update Lambda to use the latest ECR image (requires ECR_REPO and FUNCTION_NAME env vars)"
-    cmds:
-      - aws lambda update-function-code --function-name $FUNCTION_NAME --image-uri $ECR_REPO:latest
-
   lint:
     desc: "Run ruff linter"
     cmds:
@@ -99,3 +52,71 @@ tasks:
     desc: "Run mypy type checker"
     cmds:
       - uv run mypy .
+
+  api:up:
+    desc: "Start the local API server with hot reload"
+    cmds:
+      - "{{.UVICORN}} api.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  api:down:
+    desc: "Stop the local API server"
+    cmds:
+      - pkill -f "uvicorn api.main:app" || true
+
+  local_infra:up:
+    desc: "Start local infrastructure (Postgres + pgvector)"
+    cmds:
+      - docker compose up -d
+      - docker compose ps
+
+  local_infra:down:
+    desc: "Stop local infrastructure"
+    cmds:
+      - docker compose down
+
+  cloud_infra:init:
+    desc: "Initialise Terraform (download providers, set up backend)"
+    cmds:
+      - terraform -chdir=infra init
+
+  cloud_infra:plan:
+    desc: "Preview AWS infrastructure changes (ENV=local|prod, default: local)"
+    cmds:
+      - terraform -chdir=infra plan -var-file=environments/{{.ENV | default "local"}}.tfvars
+
+  cloud_infra:apply:
+    desc: "Provision / update AWS infrastructure (ENV=local|prod, default: local)"
+    cmds:
+      - terraform -chdir=infra apply -var-file=environments/{{.ENV | default "local"}}.tfvars
+
+  cloud_infra:destroy:
+    desc: "Tear down AWS infrastructure (ENV=local|prod, default: local)"
+    cmds:
+      - terraform -chdir=infra destroy -var-file=environments/{{.ENV | default "local"}}.tfvars
+
+  app:build:
+    desc: "Build Lambda container image (tag: compliancerag-{ENV}, default: dev)"
+    cmds:
+      - docker build -t compliancerag-{{.ENV | default "dev"}}:latest .
+
+  app:push:
+    desc: "Authenticate to ECR and push image (requires ECR_REPO from: terraform output ecr_repository_url)"
+    cmds:
+      - aws ecr get-login-password --region {{.AWS_REGION | default "eu-west-1"}} | docker login --username AWS --password-stdin $ECR_REPO
+      - docker tag compliancerag-{{.ENV | default "dev"}}:latest $ECR_REPO:latest
+      - docker push $ECR_REPO:latest
+
+  app:deploy:
+    desc: "Update Lambda to use the latest ECR image (requires ECR_REPO and FUNCTION_NAME)"
+    cmds:
+      - aws lambda update-function-code --function-name $FUNCTION_NAME --image-uri $ECR_REPO:latest
+
+  analytics:extract:
+    desc: "Download real GDPR fines CSV from enforcementtracker.com → datasets/gdpr_fines_raw.csv"
+    cmds:
+      - "{{.PYTHON}} -m analytics_etl.extract.gdpr_fines"
+
+  analytics:load:
+    desc: "Convert GDPR fines CSV → Parquet and upload to S3 (requires ATHENA_S3_DATA_BUCKET; run analytics:extract first for real data)"
+    cmds:
+      - "{{.PYTHON}} -m analytics_etl.loaders.gdpr_fines"
