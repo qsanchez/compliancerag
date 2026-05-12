@@ -21,7 +21,7 @@ def test_validate_sql_rejects_drop() -> None:
 
 def test_validate_sql_rejects_non_select() -> None:
     with pytest.raises(ValueError, match="Only SELECT"):
-        _validate_sql("INSERT INTO gdpr_fines VALUES (1)")
+        _validate_sql("SHOW TABLES")
 
 
 def test_run_query_returns_rows() -> None:

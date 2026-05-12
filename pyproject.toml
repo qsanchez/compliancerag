@@ -85,6 +85,9 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::langchain_core._api.deprecation.LangChainPendingDeprecationWarning",
 ]
+markers = [
+    "integration: marks tests that require real infrastructure (deselect with -m 'not integration')",
+]
 
 [dependency-groups]
 dev = [
