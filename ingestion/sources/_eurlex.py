@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 
-from ingestion.types import Document
+from ingestion.models import Document
 
 _HEADERS = {
     "User-Agent": (

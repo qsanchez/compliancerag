@@ -71,8 +71,14 @@ def test_retrieve_embeds_query(mock_embed: MagicMock, mock_conn: MagicMock) -> N
 def test_retrieve_rrf_boosts_overlap(mock_embed: MagicMock, mock_conn: MagicMock) -> None:
     mock_embed.return_value = [[0.0]]
     # doc-0 appears in both semantic and keyword → gets double RRF contribution
-    semantic = [("doc-0", "text 0", {}, 0.9), ("doc-1", "text 1", {}, 0.8)]
-    keyword = [("doc-0", "text 0", {}, 0.9), ("doc-2", "text 2", {}, 0.7)]
+    semantic: list[tuple[str, str, dict, float]] = [
+        ("doc-0", "text 0", {}, 0.9),
+        ("doc-1", "text 1", {}, 0.8),
+    ]
+    keyword: list[tuple[str, str, dict, float]] = [
+        ("doc-0", "text 0", {}, 0.9),
+        ("doc-2", "text 2", {}, 0.7),
+    ]
     mock_conn.return_value = _mock_conn(semantic, keyword)
 
     result = retrieve("query", top_k=3)

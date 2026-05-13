@@ -4,7 +4,7 @@ from pathlib import Path
 
 import httpx
 
-from ingestion.types import Document
+from ingestion.models import Document
 
 # Source: gdpr-info.eu — EUR-Lex blocks programmatic access via AWS WAF.
 # gdpr-info.eu republishes the official text structured by article, which

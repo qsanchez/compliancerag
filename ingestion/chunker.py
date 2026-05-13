@@ -2,7 +2,7 @@ from typing import Any, TypedDict
 
 import tiktoken
 
-from ingestion.types import Document
+from ingestion.models import Document
 
 
 class Chunk(TypedDict):
