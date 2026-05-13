@@ -1,8 +1,8 @@
 # ComplianceRAG — Architecture Document
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
-> Version: 0.6 — Phase 5 complete  
-> Status: Phases 1–5 complete (CloudWatch dashboard remaining)
+> Version: 0.7 — All phases complete  
+> Status: Phases 1–5 complete
 
 ---
 
@@ -235,7 +235,7 @@ compliancerag/
 - [x] AWS Lambda + API Gateway (Terraform `modules/lambda` + `modules/api_gateway`)
 - [x] GitHub Actions CI: lint, format, typecheck, unit tests on every PR
 - [x] ADRs complete (`docs/adr/` — 001, 003, 004, 005)
-- [ ] CloudWatch dashboard: latency, cost per query, error rate
+- [x] CloudWatch dashboard: latency, cost per query, error rate
 
 ### Phase 5 — Integration Tests + Analytics Extract (complete)
 **Goal:** Confidence that the full stack works end-to-end against real infrastructure; real enforcement data flowing through the analytics pipeline.  

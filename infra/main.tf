@@ -166,6 +166,17 @@ module "api_gateway" {
   lambda_function_arn  = module.lambda.function_arn
 }
 
+module "cloudwatch" {
+  source = "./modules/cloudwatch"
+
+  environment             = var.environment
+  aws_region              = var.aws_region
+  api_id                  = module.api_gateway.api_id
+  lambda_function_name    = module.lambda.function_name
+  rds_instance_identifier = "compliancerag-${var.environment}"
+  lambda_memory_mb        = 2048
+}
+
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
 output "rds_endpoint" {
@@ -210,4 +221,9 @@ output "lambda_function_name" {
 output "api_endpoint" {
   description = "API Gateway invoke URL"
   value       = module.api_gateway.api_endpoint
+}
+
+output "cloudwatch_dashboard_url" {
+  description = "CloudWatch dashboard URL"
+  value       = module.cloudwatch.dashboard_url
 }

@@ -36,7 +36,7 @@ evaluation/reports/*
 infra/**/.terraform/
 infra/**/*.tfstate
 infra/**/*.tfstate.backup
-infra/environments/prod.tfvars
+infra/environments/*.tfvars
 
 # Test coverage
 .coverage
