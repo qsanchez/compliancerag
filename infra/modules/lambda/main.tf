@@ -80,7 +80,7 @@ data "aws_iam_policy_document" "lambda" {
 
   # S3 — read/write Athena query results
   statement {
-    actions   = ["s3:GetObject", "s3:PutObject", "s3:GetBucketLocation"]
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:GetBucketLocation", "s3:ListBucket"]
     resources = ["*"]
   }
 
@@ -176,23 +176,25 @@ resource "aws_lambda_function" "this" {
 
   environment {
     variables = {
-      VECTOR_STORE               = "pgvector"
-      AWS_REGION_NAME            = var.aws_region
-      BEDROCK_MODEL_ID           = var.bedrock_model_id
-      BEDROCK_EMBEDDING_MODEL_ID = var.bedrock_embedding_model_id
-      DATABASE_URL               = var.database_url
-      ATHENA_DATABASE            = var.athena_database
-      ATHENA_TABLE_FINES         = var.athena_table_fines
-      ATHENA_S3_OUTPUT           = var.athena_s3_output
-      ATHENA_S3_DATA_BUCKET      = var.athena_s3_data_bucket
-      API_KEY                    = var.api_key
-      LANGSMITH_API_KEY          = var.langsmith_api_key
-      LANGSMITH_PROJECT          = var.langsmith_project
-      LANGCHAIN_TRACING_V2       = tostring(var.langchain_tracing_v2)
-      RERANKER_ENABLED              = "true"
-      RERANKER_MODEL                = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-      LITELLM_LOCAL_MODEL_COST_MAP  = "True"
-      MPLCONFIGDIR                  = "/tmp"
+      VECTOR_STORE                 = "pgvector"
+      AWS_REGION_NAME              = var.aws_region
+      BEDROCK_MODEL_ID             = var.bedrock_model_id
+      BEDROCK_EMBEDDING_MODEL_ID   = var.bedrock_embedding_model_id
+      DATABASE_URL                 = var.database_url
+      ATHENA_DATABASE              = var.athena_database
+      ATHENA_TABLE_FINES           = var.athena_table_fines
+      ATHENA_S3_OUTPUT             = var.athena_s3_output
+      ATHENA_S3_DATA_BUCKET        = var.athena_s3_data_bucket
+      API_KEY                      = var.api_key
+      LANGSMITH_API_KEY            = var.langsmith_api_key
+      LANGSMITH_PROJECT            = var.langsmith_project
+      LANGCHAIN_TRACING_V2         = tostring(var.langchain_tracing_v2)
+      RERANKER_ENABLED             = "false"
+      RERANKER_MODEL               = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      LITELLM_LOCAL_MODEL_COST_MAP = "True"
+      MPLCONFIGDIR                 = "/tmp"
+      HF_HUB_OFFLINE               = "1"
+      HF_HOME                      = "/var/task/.hf_cache"
     }
   }
 
