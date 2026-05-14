@@ -11,13 +11,17 @@ import matplotlib.pyplot as plt
 def _detect_axes(rows: list[dict]) -> tuple[str, str, str]:
     """Return (chart_type, x_col, y_col) for the first plottable column pair."""
     columns = list(rows[0].keys())
-    numeric_cols, label_cols = [], []
+    numeric_cols, label_cols, year_cols = [], [], []
 
     for col in columns:
         samples = [r[col] for r in rows[:5] if r.get(col) not in (None, "")]
         try:
-            [float(v) for v in samples]
-            numeric_cols.append(col)
+            vals = [float(v) for v in samples]
+            # Year-like integers are x-axis labels, not metrics
+            if all(v == int(v) and 1990 <= int(v) <= 2100 for v in vals):
+                year_cols.append(col)
+            else:
+                numeric_cols.append(col)
         except (ValueError, TypeError):
             label_cols.append(col)
 
@@ -26,11 +30,9 @@ def _detect_axes(rows: list[dict]) -> tuple[str, str, str]:
 
     y_col = numeric_cols[0]
 
-    # Year-like integer column → line chart for time-series
-    for col in label_cols:
-        sample = str(rows[0].get(col, ""))
-        if sample.isdigit() and 1990 <= int(sample) <= 2100:
-            return "line", col, y_col
+    if year_cols:
+        rows.sort(key=lambda r: int(r.get(year_cols[0], 0)))
+        return "line", year_cols[0], y_col
 
     x_col = label_cols[0] if label_cols else columns[0]
     return "bar", x_col, y_col

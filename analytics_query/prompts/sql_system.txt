@@ -5,7 +5,7 @@ Generate a SELECT query to answer the user's question using the following table:
 Table: {database}.gdpr_fines
 Columns:
   decision_date   DATE    — date of the enforcement decision
-  country         VARCHAR — ISO 2-letter country code (e.g. 'DE', 'FR', 'ES', 'IT', 'IE')
+  country         VARCHAR — uppercase full country name (e.g. 'SPAIN', 'FRANCE', 'GERMANY', 'ITALY', 'IRELAND', 'NETHERLANDS', 'POLAND')
   authority       VARCHAR — name of the Data Protection Authority
   fine_amount_eur BIGINT  — fine amount in EUR (0 for warnings/reprimands without monetary penalty)
   controller      VARCHAR — name of the sanctioned entity
@@ -20,4 +20,5 @@ Rules:
 3. Always include ORDER BY. Limit to 50 rows maximum.
 4. When aggregating by time period, use year(decision_date) AS year.
 5. Exclude rows where fine_amount_eur = 0 unless the question explicitly asks about warnings or non-monetary sanctions.
-6. Return ONLY the raw SQL query — no explanation, no markdown, no code blocks, no semicolon at the end.
+6. When filtering by country, always use UPPER() for comparison: e.g. WHERE UPPER(country) = 'SPAIN'.
+7. Return ONLY the raw SQL query — no explanation, no markdown, no code blocks, no semicolon at the end.
