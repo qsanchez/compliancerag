@@ -97,14 +97,14 @@ tasks:
   app:build:
     desc: "Build Lambda container image (tag: compliancerag-{ENV}, default: dev)"
     cmds:
-      - docker build -t compliancerag-{{.ENV | default "dev"}}:latest .
+      - docker build --platform linux/arm64 --provenance=false -t compliancerag-{{.ENV | default "dev"}}:latest .
 
   app:push:
     desc: "Authenticate to ECR and push image (requires ECR_REPO from: terraform output ecr_repository_url)"
     cmds:
       - aws ecr get-login-password --region {{.AWS_REGION | default "eu-west-1"}} | docker login --username AWS --password-stdin $ECR_REPO
       - docker tag compliancerag-{{.ENV | default "dev"}}:latest $ECR_REPO:latest
-      - docker push $ECR_REPO:latest
+      - docker push --platform linux/arm64 $ECR_REPO:latest
 
   app:deploy:
     desc: "Update Lambda to use the latest ECR image (requires ECR_REPO and FUNCTION_NAME)"
@@ -120,3 +120,25 @@ tasks:
     desc: "Convert GDPR fines CSV → Parquet and upload to S3 (requires ATHENA_S3_DATA_BUCKET; run analytics:extract first for real data)"
     cmds:
       - "{{.PYTHON}} -m analytics_etl.loaders.gdpr_fines"
+
+  frontend:config:
+    desc: "Generate frontend/config.js from Terraform outputs (run after cloud_infra:apply, ENV=prod|local)"
+    cmds:
+      - |
+        API_URL=$(terraform -chdir=infra output -raw api_endpoint)
+        COGNITO_CLIENT_ID=$(terraform -chdir=infra output -raw cognito_client_id)
+        COGNITO_LOGIN_URL=$(terraform -chdir=infra output -raw cognito_login_url)
+        REDIRECT_URI=$(terraform -chdir=infra output -raw frontend_url)
+        sed -e "s|__API_URL__|$API_URL|g" \
+            -e "s|__COGNITO_CLIENT_ID__|$COGNITO_CLIENT_ID|g" \
+            -e "s|__COGNITO_LOGIN_URL__|$COGNITO_LOGIN_URL|g" \
+            -e "s|__REDIRECT_URI__|$REDIRECT_URI|g" \
+            frontend/config.template.js > frontend/config.js
+        echo "Generated frontend/config.js"
+
+  frontend:deploy:
+    desc: "Build config.js, sync frontend assets to S3, and invalidate CloudFront cache (ENV=prod|local)"
+    cmds:
+      - task: frontend:config
+      - aws s3 sync frontend/ s3://$(terraform -chdir=infra output -raw frontend_bucket_name)/ --delete --exclude "config.template.js"
+      - aws cloudfront create-invalidation --distribution-id $(terraform -chdir=infra output -raw cloudfront_distribution_id) --paths "/*"

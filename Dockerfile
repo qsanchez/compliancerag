@@ -37,9 +37,10 @@ RUN pip install --no-cache-dir --prefer-binary \
     "httpx>=0.27" \
     "tenacity>=8.3"
 
-# Bake the reranker model into the image to avoid cold-start network calls.
+# Bake the reranker model into the image at a fixed path so HF_HUB_OFFLINE=1 works at runtime.
+ENV HF_HOME=/var/task/.hf_cache
 RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
 
 COPY . .
 
-CMD ["api.lambda_handler.handler"]
+CMD ["api.main.handler"]
