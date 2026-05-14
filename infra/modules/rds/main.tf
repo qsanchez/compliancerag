@@ -80,9 +80,9 @@ resource "aws_db_instance" "this" {
   engine_version = "16"
   instance_class = var.instance_class
 
-  allocated_storage     = var.allocated_storage_gb
-  storage_type          = "gp3"
-  storage_encrypted     = true
+  allocated_storage = var.allocated_storage_gb
+  storage_type      = "gp3"
+  storage_encrypted = true
 
   db_name  = var.db_name
   username = var.db_username
@@ -93,14 +93,14 @@ resource "aws_db_instance" "this" {
   parameter_group_name   = aws_db_parameter_group.this.name
 
   multi_az            = var.multi_az
-  publicly_accessible = false
+  publicly_accessible = var.publicly_accessible
 
   backup_retention_period = var.backup_retention_days
   backup_window           = "03:00-04:00"
   maintenance_window      = "mon:04:00-mon:05:00"
 
-  deletion_protection = var.deletion_protection
-  skip_final_snapshot = var.environment != "prod"
+  deletion_protection       = var.deletion_protection
+  skip_final_snapshot       = var.environment != "prod"
   final_snapshot_identifier = var.environment == "prod" ? "${local.name_prefix}-final" : null
 
   tags = local.common_tags

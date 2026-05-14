@@ -73,6 +73,12 @@ variable "backup_retention_days" {
   default     = 0
 }
 
+variable "publicly_accessible" {
+  description = "Make RDS reachable from the internet (only for one-off ops like ingestion; revert after)"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Additional tags to apply to all resources"
   type        = map(string)
