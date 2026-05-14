@@ -1,8 +1,8 @@
 # ComplianceRAG — Architecture Document
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
-> Version: 0.7 — All phases complete  
-> Status: Phases 1–5 complete
+> Version: 1.0 — All phases complete  
+> Status: Phases 1–6 complete
 
 ---
 
@@ -74,7 +74,11 @@ compliancerag/
 │   │   ├── rds/                    # RDS PostgreSQL + pgvector
 │   │   ├── s3/                     # S3 buckets (documents + analytics data)
 │   │   ├── athena/                 # Athena workgroup + databases
-│   │   └── lambda/                 # Lambda + API Gateway
+│   │   ├── lambda/                 # Lambda function + ECR
+│   │   ├── api_gateway/            # HTTP API + JWT authorizer
+│   │   ├── cognito/                # User Pool + Hosted UI
+│   │   ├── frontend/               # S3 + CloudFront distribution
+│   │   └── cloudwatch/             # Dashboard + metric filters + alarms
 │   ├── environments/
 │   │   ├── local.tfvars
 │   │   └── prod.tfvars
@@ -225,7 +229,7 @@ compliancerag/
 - [x] Prompt injection defence (`agent/sanitizer.py`)
 - [x] Unit tests for all agent and analytics_query modules
 
-### Phase 4 — Production Hardening (complete except CloudWatch)
+### Phase 4 — Production Hardening (complete)
 **Goal:** Deployable to AWS with full observability, CI/CD, and audit trail.  
 **Exit criterion:** CI green on every PR; one-command deploy to AWS; CloudWatch dashboard live.
 
@@ -249,6 +253,17 @@ compliancerag/
 - [x] Analytics extract (`analytics_etl/extract/gdpr_fines.py`) — fetches 3,100+ real fines from the enforcementtracker.com internal JSON feed, normalises to schema, saves to `analytics_etl/datasets/gdpr_fines_raw.csv`
 - [x] `task analytics:extract` wired up as prerequisite to `task analytics:load`
 - [x] Real GDPR fines data (3,142 rows) loaded to S3 and queryable via Athena
+
+### Phase 6 — Frontend Chat UI (complete)
+**Goal:** Browser-based chat interface with Cognito authentication, suggested prompts, and inline chart rendering.  
+**Exit criterion:** Authenticated users can ask questions and see answers with citations and charts via a CloudFront URL.
+
+- [x] `infra/modules/frontend/` — S3 bucket + CloudFront distribution (OAC, HTTPS, SPA routing)
+- [x] `infra/modules/cognito/` — Cognito User Pool + App Client + Hosted UI domain
+- [x] API Gateway JWT authorizer — validates Cognito access tokens on `/chat` route
+- [x] `frontend/index.html` + `app.js` + `style.css` — vanilla JS SPA: chat bubbles, suggested prompts, base64 chart rendering
+- [x] `frontend/config.template.js` + `task frontend:config` — generates `config.js` from Terraform outputs
+- [x] `task frontend:deploy` — syncs assets to S3 + CloudFront cache invalidation
 
 ---
 
@@ -354,8 +369,8 @@ LANGSMITH_API_KEY=
 LANGSMITH_PROJECT=compliancerag
 LANGCHAIN_TRACING_V2=true
 
-# Reranker
-RERANKER_ENABLED=true
+# Reranker (disabled on Lambda — CPU inference too slow; enable on ECS)
+RERANKER_ENABLED=false
 RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
 
 # API
