@@ -33,7 +33,7 @@ resource "aws_s3_bucket_public_access_block" "analytics_data" {
 # ── Athena query results bucket ───────────────────────────────────────────────
 resource "aws_s3_bucket" "athena_results" {
   bucket        = "${local.name_prefix}-athena-results"
-  force_destroy = true  # results are ephemeral
+  force_destroy = true # results are ephemeral
   tags          = local.common_tags
 }
 

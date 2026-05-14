@@ -38,9 +38,9 @@ resource "aws_glue_catalog_table" "gdpr_fines" {
   table_type = "EXTERNAL_TABLE"
 
   parameters = {
-    "classification"            = "parquet"
-    "parquet.compression"       = "SNAPPY"
-    "EXTERNAL"                  = "TRUE"
+    "classification"      = "parquet"
+    "parquet.compression" = "SNAPPY"
+    "EXTERNAL"            = "TRUE"
   }
 
   storage_descriptor {

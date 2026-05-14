@@ -93,6 +93,18 @@ variable "athena_s3_data_bucket" {
   default     = ""
 }
 
+variable "rds_publicly_accessible" {
+  description = "Temporarily expose RDS to the internet for one-off ops (revert after)"
+  type        = bool
+  default     = false
+}
+
+variable "rds_allowed_cidr_blocks" {
+  description = "CIDRs allowed to reach RDS directly (e.g. developer IP for ingestion)"
+  type        = list(string)
+  default     = []
+}
+
 variable "api_key" {
   description = "API key for the /chat endpoint (empty = no auth)"
   type        = string
@@ -123,6 +135,8 @@ module "rds" {
   db_password                = var.db_password
   instance_class             = var.rds_instance_class
   deletion_protection        = var.environment == "prod"
+  publicly_accessible        = var.rds_publicly_accessible
+  allowed_cidr_blocks        = var.rds_allowed_cidr_blocks
 }
 
 module "s3" {
@@ -157,13 +171,29 @@ module "lambda" {
   langchain_tracing_v2  = var.langchain_tracing_v2
 }
 
+module "frontend" {
+  source      = "./modules/frontend"
+  environment = var.environment
+}
+
+module "cognito" {
+  source = "./modules/cognito"
+
+  environment  = var.environment
+  aws_region   = var.aws_region
+  callback_url = module.frontend.domain_name
+}
+
 module "api_gateway" {
   source = "./modules/api_gateway"
 
-  environment          = var.environment
-  aws_region           = var.aws_region
-  lambda_function_name = module.lambda.function_name
-  lambda_function_arn  = module.lambda.function_arn
+  environment                 = var.environment
+  aws_region                  = var.aws_region
+  lambda_function_name        = module.lambda.function_name
+  lambda_function_arn         = module.lambda.function_arn
+  enable_jwt_auth             = true
+  cognito_user_pool_id        = module.cognito.user_pool_id
+  cognito_user_pool_client_id = module.cognito.user_pool_client_id
 }
 
 module "cloudwatch" {
@@ -175,6 +205,73 @@ module "cloudwatch" {
   lambda_function_name    = module.lambda.function_name
   rds_instance_identifier = "compliancerag-${var.environment}"
   lambda_memory_mb        = 2048
+}
+
+# ── VPC Endpoints ─────────────────────────────────────────────────────────────
+# Lambda runs inside the VPC (to reach RDS) but has no NAT gateway.
+# These endpoints let Lambda call Bedrock, S3, and Athena through the AWS
+# backbone without internet egress.
+
+data "aws_route_table" "main" {
+  vpc_id = var.vpc_id
+  filter {
+    name   = "association.main"
+    values = ["true"]
+  }
+}
+
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "compliancerag-${var.environment}-vpc-endpoints"
+  description = "Allow HTTPS from Lambda to Interface VPC endpoints"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [module.lambda.lambda_security_group_id]
+  }
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [data.aws_route_table.main.id]
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+resource "aws_vpc_endpoint" "bedrock_runtime" {
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.bedrock-runtime"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [var.private_subnet_ids[0]]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+resource "aws_vpc_endpoint" "athena" {
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.athena"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [var.private_subnet_ids[0]]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = {
+    Environment = var.environment
+  }
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
@@ -226,4 +323,29 @@ output "api_endpoint" {
 output "cloudwatch_dashboard_url" {
   description = "CloudWatch dashboard URL"
   value       = module.cloudwatch.dashboard_url
+}
+
+output "frontend_url" {
+  description = "CloudFront URL — share with users"
+  value       = module.frontend.domain_name
+}
+
+output "frontend_bucket_name" {
+  description = "S3 bucket name — used by task frontend:deploy"
+  value       = module.frontend.bucket_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID — used by task frontend:deploy for cache invalidation"
+  value       = module.frontend.distribution_id
+}
+
+output "cognito_client_id" {
+  description = "Set as COGNITO_CLIENT_ID in frontend config"
+  value       = module.cognito.user_pool_client_id
+}
+
+output "cognito_login_url" {
+  description = "Set as COGNITO_LOGIN_URL in frontend config"
+  value       = module.cognito.login_url
 }
