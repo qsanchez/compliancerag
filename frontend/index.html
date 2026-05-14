@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ComplianceRAG</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <aside id="sidebar">
+    <div id="logo">Compliance<span>RAG</span></div>
+    <div>
+      <div class="sidebar-section-title">Suggested prompts</div>
+      <div id="suggested-prompts"></div>
+    </div>
+    <button id="logout-btn">Sign out</button>
+  </aside>
+
+  <main id="chat-container">
+    <div id="messages"></div>
+    <div id="input-area">
+      <textarea
+        id="question-input"
+        rows="1"
+        placeholder="Ask about GDPR, NIS2, or DORA… (Shift+Enter for new line)"
+      ></textarea>
+      <button id="send-btn">Send</button>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
