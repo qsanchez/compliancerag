@@ -9,6 +9,7 @@ from rag import context_builder, reranker, retriever
 from rag.retriever import RetrievedChunk
 
 _TOP_K = 5
+_TOP_K_NO_RERANKER = 10  # fetch more when reranker is off to compensate for lower precision
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
@@ -21,7 +22,7 @@ class PipelineResult(TypedDict):
 @traceable(name="search_regulations", run_type="tool")
 def run(query: str, history: list[dict] | None = None) -> PipelineResult:
     settings = get_settings()
-    fetch_k = _TOP_K * reranker.FETCH_MULTIPLIER if settings.reranker_enabled else _TOP_K
+    fetch_k = _TOP_K * reranker.FETCH_MULTIPLIER if settings.reranker_enabled else _TOP_K_NO_RERANKER
     chunks = retriever.retrieve(query, top_k=fetch_k)
     if settings.reranker_enabled:
         chunks = reranker.rerank(query, chunks, top_k=_TOP_K)
