@@ -1,6 +1,7 @@
 import litellm
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
 from api.middleware.auth import APIKeyMiddleware
@@ -26,6 +27,12 @@ app = FastAPI(title="ComplianceRAG", version="0.1.0")
 
 app.add_middleware(APIKeyMiddleware)
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+)
 
 app.include_router(health.router)
 app.include_router(chat.router)
