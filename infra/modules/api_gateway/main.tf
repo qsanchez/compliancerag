@@ -10,7 +10,7 @@ resource "aws_apigatewayv2_api" "this" {
   cors_configuration {
     allow_origins = ["*"]
     allow_methods = ["GET", "POST", "OPTIONS"]
-    allow_headers = ["Content-Type", "X-API-Key"]
+    allow_headers = ["Content-Type", "X-API-Key", "Authorization"]
     max_age       = 3600
   }
 
@@ -26,16 +26,55 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  count = var.enable_jwt_auth ? 1 : 0
+
+  api_id           = aws_apigatewayv2_api.this.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "cognito"
+
+  jwt_configuration {
+    issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${var.cognito_user_pool_id}"
+    audience = [var.cognito_user_pool_client_id]
+  }
+}
+
 resource "aws_apigatewayv2_route" "proxy" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = "ANY /{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+
+  authorization_type = var.enable_jwt_auth ? "JWT" : "NONE"
+  authorizer_id      = var.enable_jwt_auth ? aws_apigatewayv2_authorizer.cognito[0].id : null
 }
 
 resource "aws_apigatewayv2_route" "root" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = "ANY /"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+
+  authorization_type = var.enable_jwt_auth ? "JWT" : "NONE"
+  authorizer_id      = var.enable_jwt_auth ? aws_apigatewayv2_authorizer.cognito[0].id : null
+}
+
+# Explicit OPTIONS routes bypass the JWT authorizer so CORS preflight succeeds
+resource "aws_apigatewayv2_route" "options_proxy" {
+  count     = var.enable_jwt_auth ? 1 : 0
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "OPTIONS /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "options_root" {
+  count     = var.enable_jwt_auth ? 1 : 0
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "OPTIONS /"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
