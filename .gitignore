@@ -40,6 +40,7 @@ frontend/config.js
 infra/**/.terraform/
 infra/**/*.tfstate
 infra/**/*.tfstate.backup
+infra/**/*.tfstate.lock.info
 infra/environments/*.tfvars
 
 # Test coverage

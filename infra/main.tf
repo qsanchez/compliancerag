@@ -59,12 +59,6 @@ variable "bedrock_model_id" {
   default     = ""
 }
 
-variable "database_url" {
-  description = "Full PostgreSQL connection URL including password"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
 
 variable "athena_s3_output" {
   description = "S3 URI for Athena query results"
@@ -151,7 +145,7 @@ module "lambda" {
   rds_security_group_id = module.rds.security_group_id
 
   bedrock_model_id      = var.bedrock_model_id
-  database_url          = var.database_url
+  database_url          = "postgresql://${module.rds.db_username}:${var.db_password}@${module.rds.db_endpoint}/${module.rds.db_name}"
   athena_database       = module.athena.database_name
   athena_s3_output      = module.s3.athena_results_s3_uri
   athena_s3_data_bucket = module.s3.analytics_data_bucket
