@@ -5,7 +5,7 @@ locals {
 # ── S3 bucket ─────────────────────────────────────────────────────────────────
 
 resource "aws_s3_bucket" "frontend" {
-  bucket = "${local.name_prefix}-frontend"
+  bucket = "${local.name_prefix}-${var.aws_region}-frontend"
 
   tags = {
     Environment = var.environment

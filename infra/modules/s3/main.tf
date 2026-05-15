@@ -5,8 +5,8 @@ locals {
 
 # ── Analytics data bucket (Parquet files consumed by Athena) ──────────────────
 resource "aws_s3_bucket" "analytics_data" {
-  bucket        = "${local.name_prefix}-analytics-data"
-  force_destroy = var.environment != "prod"
+  bucket        = "${local.name_prefix}-${var.aws_region}-analytics-data"
+  force_destroy = true
   tags          = local.common_tags
 }
 
@@ -32,8 +32,8 @@ resource "aws_s3_bucket_public_access_block" "analytics_data" {
 
 # ── Athena query results bucket ───────────────────────────────────────────────
 resource "aws_s3_bucket" "athena_results" {
-  bucket        = "${local.name_prefix}-athena-results"
-  force_destroy = true # results are ephemeral
+  bucket        = "${local.name_prefix}-${var.aws_region}-athena-results"
+  force_destroy = true
   tags          = local.common_tags
 }
 

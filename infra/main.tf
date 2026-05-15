@@ -125,6 +125,7 @@ module "rds" {
 module "s3" {
   source      = "./modules/s3"
   environment = var.environment
+  aws_region  = var.aws_region
 }
 
 module "athena" {
@@ -157,6 +158,7 @@ module "lambda" {
 module "frontend" {
   source      = "./modules/frontend"
   environment = var.environment
+  aws_region  = var.aws_region
 }
 
 module "cognito" {
