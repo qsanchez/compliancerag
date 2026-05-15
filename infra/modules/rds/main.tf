@@ -28,8 +28,9 @@ resource "aws_db_parameter_group" "this" {
 
 # ── Subnet group ─────────────────────────────────────────────────────────────
 resource "aws_db_subnet_group" "this" {
-  name       = local.name_prefix
-  subnet_ids = var.subnet_ids
+  name = local.name_prefix
+  # Use public subnets when publicly_accessible so the IGW route is available.
+  subnet_ids = var.publicly_accessible && length(var.public_subnet_ids) > 0 ? var.public_subnet_ids : var.subnet_ids
 
   tags = local.common_tags
 }

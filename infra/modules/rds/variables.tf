@@ -9,8 +9,14 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  description = "List of subnet IDs for the DB subnet group (minimum 2, different AZs)"
+  description = "Private subnet IDs for the DB subnet group (used when publicly_accessible=false)"
   type        = list(string)
+}
+
+variable "public_subnet_ids" {
+  description = "Public subnet IDs (with IGW route) — required when publicly_accessible=true"
+  type        = list(string)
+  default     = []
 }
 
 variable "allowed_security_group_ids" {
