@@ -29,8 +29,9 @@ resource "aws_db_parameter_group" "this" {
 # ── Subnet group ─────────────────────────────────────────────────────────────
 resource "aws_db_subnet_group" "this" {
   name = local.name_prefix
-  # When publicly_accessible, use only public subnets so the IGW route is present.
-  subnet_ids = var.publicly_accessible && length(var.public_subnet_ids) > 0 ? var.public_subnet_ids : var.subnet_ids
+  # Always include both private and public subnets. The subnet group is stable;
+  # publicly_accessible on the instance controls whether a public IP is assigned.
+  subnet_ids = length(var.public_subnet_ids) > 0 ? concat(var.subnet_ids, var.public_subnet_ids) : var.subnet_ids
 
   tags = local.common_tags
 }
