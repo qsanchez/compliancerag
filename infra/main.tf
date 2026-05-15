@@ -40,21 +40,6 @@ variable "environment" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "VPC ID for all resources"
-  type        = string
-}
-
-variable "private_subnet_ids" {
-  description = "Private subnet IDs (min 2, different AZs) for RDS"
-  type        = list(string)
-}
-
-variable "compute_security_group_ids" {
-  description = "Security group IDs of compute resources (Lambda, ECS) that need DB access"
-  type        = list(string)
-  default     = []
-}
 
 variable "db_password" {
   description = "RDS master password"
@@ -125,18 +110,22 @@ variable "langchain_tracing_v2" {
 
 # ── Modules ───────────────────────────────────────────────────────────────────
 
+module "networking" {
+  source      = "./modules/networking"
+  environment = var.environment
+}
+
 module "rds" {
   source = "./modules/rds"
 
-  environment                = var.environment
-  vpc_id                     = var.vpc_id
-  subnet_ids                 = var.private_subnet_ids
-  allowed_security_group_ids = var.compute_security_group_ids
-  db_password                = var.db_password
-  instance_class             = var.rds_instance_class
-  deletion_protection        = var.environment == "prod"
-  publicly_accessible        = var.rds_publicly_accessible
-  allowed_cidr_blocks        = var.rds_allowed_cidr_blocks
+  environment         = var.environment
+  vpc_id              = module.networking.vpc_id
+  subnet_ids          = module.networking.private_subnet_ids
+  db_password         = var.db_password
+  instance_class      = var.rds_instance_class
+  deletion_protection = var.environment == "prod"
+  publicly_accessible = var.rds_publicly_accessible
+  allowed_cidr_blocks = var.rds_allowed_cidr_blocks
 }
 
 module "s3" {
@@ -157,8 +146,8 @@ module "lambda" {
 
   environment           = var.environment
   aws_region            = var.aws_region
-  vpc_id                = var.vpc_id
-  subnet_ids            = var.private_subnet_ids
+  vpc_id                = module.networking.vpc_id
+  subnet_ids            = module.networking.private_subnet_ids
   rds_security_group_id = module.rds.security_group_id
 
   bedrock_model_id      = var.bedrock_model_id
@@ -212,18 +201,10 @@ module "cloudwatch" {
 # These endpoints let Lambda call Bedrock, S3, and Athena through the AWS
 # backbone without internet egress.
 
-data "aws_route_table" "main" {
-  vpc_id = var.vpc_id
-  filter {
-    name   = "association.main"
-    values = ["true"]
-  }
-}
-
 resource "aws_security_group" "vpc_endpoints" {
   name        = "compliancerag-${var.environment}-vpc-endpoints"
   description = "Allow HTTPS from Lambda to Interface VPC endpoints"
-  vpc_id      = var.vpc_id
+  vpc_id      = module.networking.vpc_id
 
   ingress {
     from_port       = 443
@@ -238,10 +219,10 @@ resource "aws_security_group" "vpc_endpoints" {
 }
 
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = var.vpc_id
+  vpc_id            = module.networking.vpc_id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [data.aws_route_table.main.id]
+  route_table_ids   = [module.networking.private_route_table_id]
 
   tags = {
     Environment = var.environment
@@ -249,10 +230,10 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 resource "aws_vpc_endpoint" "bedrock_runtime" {
-  vpc_id              = var.vpc_id
+  vpc_id              = module.networking.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.bedrock-runtime"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [var.private_subnet_ids[0]]
+  subnet_ids          = [module.networking.private_subnet_ids[0]]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -262,10 +243,10 @@ resource "aws_vpc_endpoint" "bedrock_runtime" {
 }
 
 resource "aws_vpc_endpoint" "athena" {
-  vpc_id              = var.vpc_id
+  vpc_id              = module.networking.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.athena"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = [var.private_subnet_ids[0]]
+  subnet_ids          = [module.networking.private_subnet_ids[0]]
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 

@@ -71,6 +71,7 @@ compliancerag/
 │
 ├── infra/                          # Terraform
 │   ├── modules/
+│   │   ├── networking/             # VPC + private subnets + route tables
 │   │   ├── rds/                    # RDS PostgreSQL + pgvector
 │   │   ├── s3/                     # S3 buckets (documents + analytics data)
 │   │   ├── athena/                 # Athena workgroup + databases
