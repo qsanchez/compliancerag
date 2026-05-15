@@ -111,7 +111,7 @@
     el.innerHTML = `
       <div class="bubble">
         ${badge}
-        ${escHtml(data.answer)}
+        ${renderMarkdown(data.answer)}
         ${citations}
         ${chart}
       </div>`;
@@ -123,6 +123,39 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+  }
+
+  function renderMarkdown(text) {
+    const lines = escHtml(text).split("\n");
+    const html = [];
+    let inList = false;
+
+    for (const raw of lines) {
+      const line = raw.trimEnd();
+
+      if (/^### (.+)/.test(line)) {
+        if (inList) { html.push("</ul>"); inList = false; }
+        html.push(`<h3>${line.replace(/^### /, "")}</h3>`);
+      } else if (/^## (.+)/.test(line)) {
+        if (inList) { html.push("</ul>"); inList = false; }
+        html.push(`<h2>${line.replace(/^## /, "")}</h2>`);
+      } else if (/^# (.+)/.test(line)) {
+        if (inList) { html.push("</ul>"); inList = false; }
+        html.push(`<h1>${line.replace(/^# /, "")}</h1>`);
+      } else if (/^[-*] (.+)/.test(line)) {
+        if (!inList) { html.push("<ul>"); inList = true; }
+        html.push(`<li>${line.replace(/^[-*] /, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</li>`);
+      } else if (line === "") {
+        if (inList) { html.push("</ul>"); inList = false; }
+        html.push("<br>");
+      } else {
+        if (inList) { html.push("</ul>"); inList = false; }
+        html.push(`<p>${line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</p>`);
+      }
+    }
+
+    if (inList) html.push("</ul>");
+    return html.join("");
   }
 
   function scrollBottom() {
