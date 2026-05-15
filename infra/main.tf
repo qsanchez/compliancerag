@@ -255,6 +255,19 @@ resource "aws_vpc_endpoint" "athena" {
   }
 }
 
+resource "aws_vpc_endpoint" "bedrock_agent_runtime" {
+  vpc_id              = module.networking.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.bedrock-agent-runtime"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [module.networking.private_subnet_ids[0]]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
 output "rds_endpoint" {

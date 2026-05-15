@@ -10,10 +10,6 @@ RUN dnf install -y gcc gcc-c++ make && \
     echo 'source $HOME/.cargo/env' >> /root/.bashrc
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# CPU-only torch — must be installed before sentence-transformers so it picks
-# up the CPU build instead of the 2GB CUDA variant.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
 # Install only what the Lambda API needs (not eval/ingestion deps).
 # --prefer-binary: use pre-built wheels over source; avoids compiling numpy/matplotlib.
 RUN pip install --no-cache-dir --prefer-binary \
@@ -26,7 +22,6 @@ RUN pip install --no-cache-dir --prefer-binary \
     "langsmith>=0.1" \
     "langchain-core>=0.3" \
     "langgraph>=0.2" \
-    "sentence-transformers>=3.0" \
     "psycopg[binary]>=3.1" \
     "pgvector>=0.3" \
     "pyathena>=3.0" \
@@ -36,10 +31,6 @@ RUN pip install --no-cache-dir --prefer-binary \
     "pillow>=10.0" \
     "httpx>=0.27" \
     "tenacity>=8.3"
-
-# Bake the reranker model into the image at a fixed path so HF_HUB_OFFLINE=1 works at runtime.
-ENV HF_HOME=/var/task/.hf_cache
-RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
 
 COPY . .
 

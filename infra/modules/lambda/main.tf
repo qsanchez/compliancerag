@@ -72,9 +72,9 @@ data "aws_iam_policy_document" "lambda" {
     resources = ["*"]
   }
 
-  # Bedrock — invoke models for LLM generation and embeddings
+  # Bedrock — invoke models for LLM generation, embeddings, and reranking
   statement {
-    actions   = ["bedrock:InvokeModel"]
+    actions   = ["bedrock:InvokeModel", "bedrock:Rerank"]
     resources = ["*"]
   }
 
@@ -189,12 +189,10 @@ resource "aws_lambda_function" "this" {
       LANGSMITH_API_KEY            = var.langsmith_api_key
       LANGSMITH_PROJECT            = var.langsmith_project
       LANGCHAIN_TRACING_V2         = tostring(var.langchain_tracing_v2)
-      RERANKER_ENABLED             = "false"
-      RERANKER_MODEL               = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      RERANKER_ENABLED             = "true"
+      RERANKER_MODEL               = "cohere.rerank-v3-5:0"
       LITELLM_LOCAL_MODEL_COST_MAP = "True"
       MPLCONFIGDIR                 = "/tmp"
-      HF_HUB_OFFLINE               = "1"
-      HF_HOME                      = "/var/task/.hf_cache"
     }
   }
 
