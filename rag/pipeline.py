@@ -22,7 +22,9 @@ class PipelineResult(TypedDict):
 @traceable(name="search_regulations", run_type="tool")
 def run(query: str, history: list[dict] | None = None) -> PipelineResult:
     settings = get_settings()
-    fetch_k = _TOP_K * reranker.FETCH_MULTIPLIER if settings.reranker_enabled else _TOP_K_NO_RERANKER
+    fetch_k = (
+        _TOP_K * reranker.FETCH_MULTIPLIER if settings.reranker_enabled else _TOP_K_NO_RERANKER
+    )
     chunks = retriever.retrieve(query, top_k=fetch_k)
     if settings.reranker_enabled:
         chunks = reranker.rerank(query, chunks, top_k=_TOP_K)

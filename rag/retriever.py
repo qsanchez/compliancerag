@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any, TypedDict
 
 from langsmith import traceable
@@ -8,6 +9,14 @@ from vectorstore import client, embedder
 # Reciprocal Rank Fusion constant — higher k reduces the impact of top-rank
 # dominance; 60 is the standard value from the original RRF paper.
 _RRF_K = 60
+
+# Detects "Article 32", "Art. 5", "article 28" etc. in a query
+_ARTICLE_RE = re.compile(r"\bart(?:icle)?\.?\s*(\d+)\b", re.IGNORECASE)
+
+
+def _extract_article_number(query: str) -> str | None:
+    m = _ARTICLE_RE.search(query)
+    return m.group(1) if m else None
 
 
 class RetrievedChunk(TypedDict):
@@ -67,6 +76,28 @@ def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
 
     top_ids = sorted(rrf_scores, key=rrf_scores.__getitem__, reverse=True)[:top_k]
 
+    # If the query targets a specific article, guarantee its chunks appear in results.
+    # RRF tends to surface chunks that *reference* the article rather than the article
+    # itself, because referencing chunks repeat the article number more often.
+    article_num = _extract_article_number(query)
+    if article_num:
+        with client._get_pgvector_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, document, metadata
+                    FROM embeddings
+                    WHERE metadata->>'article_number' ~ %s
+                    LIMIT 3
+                    """,
+                    (rf"(?i)\b{re.escape(article_num)}\b",),
+                )
+                for row in cur.fetchall():
+                    if row[0] not in rows_by_id:
+                        rows_by_id[row[0]] = row + (1.0,)
+                    if row[0] not in top_ids:
+                        top_ids = [row[0]] + top_ids[: top_k - 1]
+
     return [
         RetrievedChunk(
             text=rows_by_id[doc_id][1],
@@ -75,7 +106,7 @@ def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
                 if isinstance(rows_by_id[doc_id][2], str)
                 else rows_by_id[doc_id][2]
             ),
-            score=rrf_scores[doc_id],
+            score=rrf_scores.get(doc_id, 1.0),
         )
         for doc_id in top_ids
     ]
