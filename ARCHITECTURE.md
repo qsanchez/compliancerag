@@ -209,8 +209,8 @@ compliancerag/
 
 - [x] NIS2 + DORA loaders — 46 NIS2 articles + 64 DORA articles via EUR-Lex HTML parser
 - [x] pgvector on RDS PostgreSQL (Terraform `modules/rds`)
-- [x] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm) with RRF fusion (k=60)
-- [x] Cross-encoder re-ranking — `ms-marco-MiniLM-L-6-v2`; fetch_k = 3×top_k
+- [x] Hybrid retrieval: semantic (pgvector) + keyword (pg_trgm) + metadata (article_number + title) with RRF fusion (k=60) — three legs, each fetching `top_k × 3` candidates
+- [x] Cross-encoder re-ranking — `ms-marco-MiniLM-L-6-v2` implemented; replaced by Cohere Rerank v3.5 via Bedrock in Phase 7 (see ADR-009)
 - [x] LangSmith integration — `@traceable` on retrieve/rerank/pipeline
 - [x] Expand golden dataset to 30 questions across GDPR, NIS2, DORA
 - [x] RAGAS evaluation comparison: Phase 1 baseline vs hybrid retrieval
@@ -238,7 +238,7 @@ compliancerag/
 - [x] Audit logging — every query written to Postgres `audit_log`
 - [x] AWS Lambda + API Gateway (Terraform `modules/lambda` + `modules/api_gateway`)
 - [x] GitHub Actions CI: lint, format, typecheck, unit tests on every PR
-- [x] ADRs complete (`docs/adr/` — 001, 003, 004, 005)
+- [x] ADRs complete (`docs/adr/` — 001–009)
 - [x] CloudWatch dashboard: latency, cost per query, error rate
 
 ### Phase 5 — Integration Tests + Analytics Extract (complete)
@@ -264,6 +264,21 @@ compliancerag/
 - [x] `frontend/index.html` + `app.js` + `style.css` — vanilla JS SPA: chat bubbles, suggested prompts, base64 chart rendering
 - [x] `frontend/config.template.js` + `task frontend:config` — generates `config.js` from Terraform outputs
 - [x] `task frontend:deploy` — syncs assets to S3 + CloudFront cache invalidation
+
+### Phase 7 — us-east-1 Migration + Managed Reranking (planned)
+**Goal:** Migrate the production deployment from eu-west-1 to us-east-1 to unlock Cohere Rerank v3.5 via Amazon Bedrock, restoring full cross-encoder reranking quality without Lambda CPU or timeout constraints.  
+**Exit criterion:** Full pipeline running in us-east-1 with `RERANKER_ENABLED=true`; reranking confirmed working end-to-end via the chat UI.
+
+- [ ] Verify us-east-1 VPC and private subnet IDs
+- [ ] Update `prod.tfvars` — `aws_region`, VPC/subnet IDs, Bedrock model prefix (`eu.` → `us.`)
+- [ ] `rag/reranker.py` — replace PyTorch `CrossEncoder` with `boto3` call to `bedrock-runtime.rerank()` using `cohere.rerank-v3-5:0`
+- [ ] Add `bedrock:Rerank` to Lambda IAM policy (`infra/modules/lambda/main.tf`)
+- [ ] `terraform destroy` eu-west-1 → `terraform apply` us-east-1
+- [ ] Build + push new image to us-east-1 ECR repository
+- [ ] Re-ingest GDPR, NIS2, DORA into us-east-1 RDS
+- [ ] Re-load analytics Parquet to us-east-1 S3 bucket
+- [ ] Set `RERANKER_ENABLED=true` in Lambda environment variables
+- [ ] End-to-end test: RAG with reranking + analytics + frontend
 
 ---
 
@@ -293,6 +308,11 @@ compliancerag/
 **Decision:** Recursive character splitting (512 tokens, 50-token overlap) for Phase 1.  
 **Rationale:** Zero extra dependencies, fast, deterministic. Sufficient to validate the pipeline before optimising retrieval quality.  
 **Trade-off:** Structure-blind — chunk boundaries may fall mid-obligation. To be revisited with semantic chunking if RAGAS scores plateau.
+
+### ADR-009 — Reranker Infrastructure: managed API over local inference
+**Decision:** Replace local `cross-encoder/ms-marco-MiniLM-L-6-v2` with Cohere Rerank v3.5 via Amazon Bedrock (`cohere.rerank-v3-5:0`).  
+**Rationale:** PyTorch JIT warm-up takes 30–60 s on Lambda's ARM64 CPU — consistently hitting the 60 s timeout. Cohere Rerank is the same cross-encoder algorithm, executed on Bedrock's GPU infrastructure, returned as an API response with ~150 ms latency and no local compute.  
+**Trade-off:** Requires us-east-1 deployment (not available in eu-west-1). Adds per-search cost ($2/1000) and ~150 ms API latency. Both are acceptable; the alternative was a permanently disabled reranker.
 
 ---
 
