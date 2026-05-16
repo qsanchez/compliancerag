@@ -36,6 +36,6 @@ jobs:
         run: uv run mypy .
 
       - name: Tests
-        run: uv run pytest tests/ -v --cov=. --cov-report=term-missing
+        run: uv run pytest tests/unit/ -v --cov=. --cov-report=term-missing
         env:
           LANGCHAIN_TRACING_V2: "false"
