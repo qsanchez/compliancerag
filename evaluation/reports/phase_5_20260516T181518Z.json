@@ -1,0 +1,21 @@
+{
+  "label": "phase_5",
+  "timestamp": "20260516T181518Z",
+  "num_questions": 30,
+  "regulations": [
+    "DORA",
+    "GDPR",
+    "NIS2"
+  ],
+  "retrieval": {
+    "reranker_enabled": true,
+    "reranker_model": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  },
+  "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "scores": {
+    "faithfulness": 0.9799304560174126,
+    "answer_relevancy": 0.9071615766919322,
+    "context_precision": 0.8329166666099963,
+    "context_recall": 0.8532142857142858
+  }
+}
