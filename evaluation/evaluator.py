@@ -127,7 +127,7 @@ def run() -> None:
         "regulations": _detect_regulations(golden),
         "retrieval": {
             "reranker_enabled": settings.reranker_enabled,
-            "reranker_model": settings.reranker_model if settings.reranker_enabled else None,
+            "reranker_model": settings.bedrock_model_id if settings.reranker_enabled else None,
         },
         "model": settings.bedrock_model_id,
         "scores": {str(k): float(v) for k, v in scores.items()},
