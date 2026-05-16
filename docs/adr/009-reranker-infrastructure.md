@@ -1,6 +1,6 @@
 # ADR-009 — Reranker Infrastructure: managed API over local inference
 
-**Status:** Accepted  
+**Status:** Superseded (see Amendment below)  
 **Date:** 2026-05-15
 
 ## Decision
@@ -67,3 +67,82 @@ initialisation (PyTorch JIT, model loading) on every cold start. The right bound
 
 Recognising this boundary and replacing local inference with a managed API is the
 architecturally correct decision for a serverless deployment, not a compromise.
+
+---
+
+## Amendment — 2026-05-16: Cohere Rerank replaced by LLM reranking
+
+**Status:** Accepted
+
+### What changed
+
+The `bedrock-agent-runtime` Cohere Rerank v3.5 integration was abandoned in favour of
+**LLM-based reranking using the existing Claude model** (same model as generation, via
+LiteLLM). The reranker sends all candidate chunks in a single prompt and asks the model
+to return a ranked list of indices.
+
+Each passage is presented with its metadata header:
+
+```
+[0] [NIS2 · Art.21 · Security of network systems]
+    Cloud providers shall adopt measures proportionate to the risk...
+
+[1] [GDPR · Art.5 · Principles relating to processing]
+    Personal data shall be processed lawfully...
+```
+
+The model returns a JSON array of indices (`[0, 2, 1, ...]`); the reranker selects the
+first `top_k`. On any failure the implementation falls back to vector-similarity order.
+
+### Why Cohere Rerank was abandoned
+
+After the eu-west-1 → us-east-1 migration specifically to access Cohere Rerank:
+
+1. **AWS Marketplace subscription wall** — `bedrock-agent-runtime.rerank()` raises a
+   `ValidationException` (HTTP 403) with the message *"not authorized to perform the
+   required AWS Marketplace actions (aws-marketplace:ViewSubscriptions,
+   aws-marketplace:Subscribe)"*, regardless of IAM policy content.
+2. **No self-service activation path** — the Bedrock Model Access page that previously
+   handled subscriptions was retired. The replacement flow ("invoke once with a
+   Marketplace-permissioned user") also returned the same 403. The Bedrock playground
+   for Rerank models is disabled (no generative interface). The AWS Marketplace product
+   listing for Cohere Rerank v3.5 prices the model as a **dedicated SageMaker endpoint
+   at $3.50/host/hour** — an entirely different product, not the serverless Bedrock API.
+3. **No alternative reranking model in Bedrock** — `cohere.rerank-v3-5:0` is the only
+   model returned by `list-foundation-models` for the rerank capability in us-east-1.
+   Amazon does not offer a native reranking model in the same API.
+
+The Marketplace subscription requirement for serverless Bedrock reranking could not be
+completed through any available API, CLI, or console path.
+
+### Decision rationale
+
+Using the existing LLM call for reranking avoids all external dependencies beyond what
+is already required for generation:
+
+- **Zero new AWS resources or permissions** — same IAM role, same VPC endpoint, same
+  LiteLLM call pattern.
+- **Metadata-aware ranking** — the prompt includes `regulation · article · title` for
+  each candidate, giving the model stronger relevance signals than text alone.
+- **Graceful degradation** — any exception (LLM timeout, malformed JSON) falls back to
+  vector-similarity order; the pipeline never hard-fails on the reranker.
+- **One API call** — all candidates are ranked in a single completion request (unlike
+  a cross-encoder, which requires N calls).
+
+### Trade-offs vs Cohere Rerank
+
+| Concern | Impact |
+|---|---|
+| Ranking quality | Generative models are less specialised than dedicated cross-encoders; precision at top-1 may be marginally lower |
+| Latency | ~300–600 ms extra per query (one additional LLM call) vs ~100–200 ms for Cohere |
+| Cost | ~$0.001 per query with Claude Haiku; comparable to Cohere at PoC traffic |
+| Token usage | Sending all candidate texts in the prompt consumes input tokens; mitigated by the small candidate set (≤15 chunks) |
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `rag/reranker.py` | Full rewrite — boto3/Cohere removed, LiteLLM completion added |
+| `rag/prompts/rerank.txt` | New prompt file for ranking instruction |
+| `config.py` | `reranker_model` field removed |
+| `infra/modules/lambda/main.tf` | `RERANKER_MODEL` env var and Marketplace IAM statement removed |

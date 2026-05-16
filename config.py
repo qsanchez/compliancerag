@@ -29,7 +29,6 @@ class Settings(BaseSettings):
 
     # Reranker
     reranker_enabled: bool = True
-    reranker_model: str = "cohere.rerank-v3-5:0"
 
     # API
     api_key: str = ""

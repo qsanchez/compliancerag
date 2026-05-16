@@ -190,7 +190,6 @@ resource "aws_lambda_function" "this" {
       LANGSMITH_PROJECT            = var.langsmith_project
       LANGCHAIN_TRACING_V2         = tostring(var.langchain_tracing_v2)
       RERANKER_ENABLED             = "true"
-      RERANKER_MODEL               = "cohere.rerank-v3-5:0"
       LITELLM_LOCAL_MODEL_COST_MAP = "True"
       MPLCONFIGDIR                 = "/tmp"
     }
