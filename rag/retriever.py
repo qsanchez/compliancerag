@@ -9,6 +9,8 @@ from vectorstore import client, embedder
 # dominance; 60 is the standard value from the original RRF paper.
 _RRF_K = 60
 
+_KNOWN_REGULATIONS: frozenset[str] = frozenset({"gdpr", "nis2", "dora"})
+
 
 class RetrievedChunk(TypedDict):
     text: str
@@ -16,64 +18,79 @@ class RetrievedChunk(TypedDict):
     score: float
 
 
-@traceable(name="retrieve", run_type="retriever")
-def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
-    query_embedding = embedder.embed([query])[0]
-    fetch_k = top_k * 3  # fetch more candidates from each leg before fusion
+def _detect_regulations(query: str) -> list[str]:
+    """Return uppercase regulation names explicitly mentioned in the query."""
+    q = query.lower()
+    return sorted(reg.upper() for reg in _KNOWN_REGULATIONS if reg in q)
 
-    with client._get_pgvector_conn() as conn:
-        with conn.cursor() as cur:
-            # Leg 1 — Semantic: cosine ANN via HNSW
-            cur.execute(
-                """
-                SELECT id, document, metadata,
-                       1 - (embedding <=> %s::vector) AS score
-                FROM embeddings
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s
-                """,
-                (query_embedding, query_embedding, fetch_k),
-            )
-            semantic_rows = cur.fetchall()
 
-            # Leg 2 — Keyword: pg_trgm word_similarity on document body
-            cur.execute(
-                """
-                SELECT id, document, metadata,
-                       word_similarity(%s, document) AS score
-                FROM embeddings
-                ORDER BY word_similarity(%s, document) DESC
-                LIMIT %s
-                """,
-                (query, query, fetch_k),
-            )
-            keyword_rows = cur.fetchall()
+def _fetch_legs(
+    cur: Any,
+    query: str,
+    query_embedding: list[float],
+    fetch_k: int,
+    regulation: str | None,
+) -> tuple[list[tuple], list[tuple], list[tuple]]:
+    """Run the three retrieval legs, optionally filtered to one regulation."""
+    reg_clause = "AND metadata->>'regulation' = %s" if regulation else ""
+    reg_param: tuple[str, ...] = (regulation,) if regulation else ()
 
-            # Leg 3 — Metadata: word_similarity on article_number + title + regulation.
-            # Boosts chunks whose article identity directly matches the query without
-            # relying on how often the article is *referenced* in the body text.
-            cur.execute(
-                """
-                SELECT id, document, metadata,
-                       word_similarity(%s,
-                           COALESCE(metadata->>'article_number', '') || ' ' ||
-                           COALESCE(metadata->>'title', '') || ' ' ||
-                           COALESCE(metadata->>'regulation', '')
-                       ) AS score
-                FROM embeddings
-                ORDER BY score DESC
-                LIMIT %s
-                """,
-                (query, fetch_k),
-            )
-            metadata_rows = cur.fetchall()
+    cur.execute(
+        f"""
+        SELECT id, document, metadata,
+               1 - (embedding <=> %s::vector) AS score
+        FROM embeddings
+        WHERE TRUE {reg_clause}
+        ORDER BY embedding <=> %s::vector
+        LIMIT %s
+        """,
+        (query_embedding, *reg_param, query_embedding, fetch_k),
+    )
+    semantic_rows = cur.fetchall()
 
-    # Build id → row map (last writer wins, all legs have same shape)
+    cur.execute(
+        f"""
+        SELECT id, document, metadata,
+               word_similarity(%s, document) AS score
+        FROM embeddings
+        WHERE TRUE {reg_clause}
+        ORDER BY word_similarity(%s, document) DESC
+        LIMIT %s
+        """,
+        (query, *reg_param, query, fetch_k),
+    )
+    keyword_rows = cur.fetchall()
+
+    cur.execute(
+        f"""
+        SELECT id, document, metadata,
+               word_similarity(%s,
+                   COALESCE(metadata->>'article_number', '') || ' ' ||
+                   COALESCE(metadata->>'title', '') || ' ' ||
+                   COALESCE(metadata->>'regulation', '')
+               ) AS score
+        FROM embeddings
+        WHERE TRUE {reg_clause}
+        ORDER BY score DESC
+        LIMIT %s
+        """,
+        (query, *reg_param, fetch_k),
+    )
+    metadata_rows = cur.fetchall()
+
+    return semantic_rows, keyword_rows, metadata_rows
+
+
+def _fuse(
+    semantic_rows: list[tuple],
+    keyword_rows: list[tuple],
+    metadata_rows: list[tuple],
+    top_k: int,
+) -> list[RetrievedChunk]:
     rows_by_id: dict[str, tuple] = {}
     for row in semantic_rows + keyword_rows + metadata_rows:
         rows_by_id[row[0]] = row
 
-    # RRF fusion: score = Σ 1/(k + rank) across all three legs
     rrf_scores: dict[str, float] = {}
     for ranked_list in (semantic_rows, keyword_rows, metadata_rows):
         for rank, row in enumerate(ranked_list, start=1):
@@ -94,3 +111,38 @@ def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
         )
         for doc_id in top_ids
     ]
+
+
+def _retrieve_filtered(
+    cur: Any,
+    query: str,
+    query_embedding: list[float],
+    top_k: int,
+    regulation: str | None = None,
+) -> list[RetrievedChunk]:
+    fetch_k = top_k * 3
+    semantic, keyword, metadata = _fetch_legs(cur, query, query_embedding, fetch_k, regulation)
+    return _fuse(semantic, keyword, metadata, top_k)
+
+
+@traceable(name="retrieve", run_type="retriever")
+def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
+    query_embedding = embedder.embed([query])[0]
+    regulations = _detect_regulations(query)
+
+    with client._get_pgvector_conn() as conn:
+        with conn.cursor() as cur:
+            if len(regulations) > 1:
+                # Allocate slots evenly across detected regulations so each is
+                # represented in the candidate set passed to the reranker.
+                per_reg = top_k // len(regulations)
+                remainder = top_k % len(regulations)
+                chunks: list[RetrievedChunk] = []
+                for i, reg in enumerate(regulations):
+                    n = per_reg + (1 if i < remainder else 0)
+                    chunks.extend(
+                        _retrieve_filtered(cur, query, query_embedding, n, regulation=reg)
+                    )
+                return chunks
+            else:
+                return _retrieve_filtered(cur, query, query_embedding, top_k)
