@@ -8,7 +8,12 @@ def _make_chunks(n: int) -> list[RetrievedChunk]:
     return [
         RetrievedChunk(
             text=f"chunk {i}",
-            metadata={"regulation": "GDPR", "article_number": str(i), "title": f"Article {i}", "chapter": "1"},
+            metadata={
+                "regulation": "GDPR",
+                "article_number": str(i),
+                "title": f"Article {i}",
+                "chapter": "1",
+            },
             score=0.5,
         )
         for i in range(n)
@@ -17,6 +22,7 @@ def _make_chunks(n: int) -> list[RetrievedChunk]:
 
 def _mock_completion(ranked_indices: list[int]) -> MagicMock:
     import json
+
     response = MagicMock()
     response.choices[0].message.content = json.dumps(ranked_indices)
     return response
