@@ -186,10 +186,8 @@ resource "aws_lambda_function" "this" {
       ATHENA_S3_OUTPUT             = var.athena_s3_output
       ATHENA_S3_DATA_BUCKET        = var.athena_s3_data_bucket
       API_KEY                      = var.api_key
-      LANGSMITH_API_KEY            = var.langsmith_api_key
-      LANGSMITH_PROJECT            = var.langsmith_project
-      LANGCHAIN_TRACING_V2         = tostring(var.langchain_tracing_v2)
       RERANKER_ENABLED             = "true"
+      ONLINE_EVAL_SAMPLE_RATE      = tostring(var.online_eval_sample_rate)
       LITELLM_LOCAL_MODEL_COST_MAP = "True"
       MPLCONFIGDIR                 = "/tmp"
     }

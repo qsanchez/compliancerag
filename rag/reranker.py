@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 
 import litellm
-from langsmith import traceable
 
 from config import get_settings
 from rag.retriever import RetrievedChunk
@@ -26,7 +25,6 @@ def _format_source(index: int, chunk: RetrievedChunk) -> str:
     return f"[{index}] [{label}]\n{chunk['text']}"
 
 
-@traceable(name="rerank", run_type="chain")
 def rerank(query: str, chunks: list[RetrievedChunk], top_k: int) -> list[RetrievedChunk]:
     if not chunks:
         return chunks

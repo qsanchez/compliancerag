@@ -37,5 +37,3 @@ jobs:
 
       - name: Tests
         run: uv run pytest tests/unit/ -v --cov=. --cov-report=term-missing
-        env:
-          LANGCHAIN_TRACING_V2: "false"

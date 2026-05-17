@@ -1,8 +1,6 @@
 import json
 from typing import Any, TypedDict
 
-from langsmith import traceable
-
 from vectorstore import client, embedder
 
 # Reciprocal Rank Fusion constant — higher k reduces the impact of top-rank
@@ -125,7 +123,6 @@ def _retrieve_filtered(
     return _fuse(semantic, keyword, metadata, top_k)
 
 
-@traceable(name="retrieve", run_type="retriever")
 def retrieve(query: str, top_k: int = 5) -> list[RetrievedChunk]:
     query_embedding = embedder.embed([query])[0]
     regulations = _detect_regulations(query)

@@ -22,13 +22,11 @@ class Settings(BaseSettings):
     athena_s3_output: str = ""
     athena_s3_data_bucket: str = ""
 
-    # LLMOps
-    langsmith_api_key: str = ""
-    langsmith_project: str = "compliancerag"
-    langchain_tracing_v2: bool = False
-
     # Reranker
     reranker_enabled: bool = True
+
+    # Online evaluation
+    online_eval_sample_rate: float = 0.1
 
     # API
     api_key: str = ""

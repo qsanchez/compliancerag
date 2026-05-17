@@ -63,3 +63,6 @@ analytics_etl/datasets/*.parquet
 # draw.io temp/backup files
 *.drawio.dtmp
 *.drawio.bkp
+
+# Private files
+private/

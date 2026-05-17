@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 
 class AgentState(TypedDict):
@@ -9,3 +9,4 @@ class AgentState(TypedDict):
     chart_b64: str | None
     answer: str
     citations: list[str]
+    chunks: list[Any]

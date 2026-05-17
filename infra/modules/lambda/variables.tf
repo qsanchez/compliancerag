@@ -78,18 +78,7 @@ variable "api_key" {
   default     = ""
 }
 
-variable "langsmith_api_key" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "langsmith_project" {
-  type    = string
-  default = "compliancerag"
-}
-
-variable "langchain_tracing_v2" {
-  type    = bool
-  default = false
+variable "online_eval_sample_rate" {
+  type    = number
+  default = 0.1
 }

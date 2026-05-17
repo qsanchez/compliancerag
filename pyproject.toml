@@ -14,7 +14,6 @@ dependencies = [
     # Orchestration
     "langgraph>=0.2.0",
     "langchain-core>=0.2.0",
-    "langsmith>=0.1.90",
     # Vector stores
     "pgvector>=0.3.0",
     "psycopg[binary]>=3.1.0",
@@ -82,9 +81,7 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-filterwarnings = [
-    "ignore::langchain_core._api.deprecation.LangChainPendingDeprecationWarning",
-]
+filterwarnings = []
 markers = [
     "integration: marks tests that require real infrastructure (deselect with -m 'not integration')",
 ]

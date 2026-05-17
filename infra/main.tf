@@ -91,15 +91,9 @@ variable "api_key" {
   default     = ""
 }
 
-variable "langsmith_api_key" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "langchain_tracing_v2" {
-  type    = bool
-  default = false
+variable "online_eval_sample_rate" {
+  type    = number
+  default = 0.1
 }
 
 # ── Modules ───────────────────────────────────────────────────────────────────
@@ -151,9 +145,8 @@ module "lambda" {
   athena_database       = module.athena.database_name
   athena_s3_output      = module.s3.athena_results_s3_uri
   athena_s3_data_bucket = module.s3.analytics_data_bucket
-  api_key               = var.api_key
-  langsmith_api_key     = var.langsmith_api_key
-  langchain_tracing_v2  = var.langchain_tracing_v2
+  api_key                 = var.api_key
+  online_eval_sample_rate = var.online_eval_sample_rate
 }
 
 module "frontend" {

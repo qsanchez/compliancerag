@@ -16,6 +16,7 @@ def _initial_state(question: str) -> AgentState:
         "chart_b64": None,
         "answer": "",
         "citations": [],
+        "chunks": [],
     }
 
 

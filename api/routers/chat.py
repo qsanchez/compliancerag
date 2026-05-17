@@ -1,8 +1,7 @@
 import time
 
 import structlog
-from fastapi import APIRouter, HTTPException
-from langsmith import traceable
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from agent.graph import graph
 from agent.sanitizer import sanitize
@@ -10,6 +9,7 @@ from agent.state import AgentState
 from api.models import ChatRequest, ChatResponse
 from audit.logger import AuditRecord, log_query
 from config import get_settings
+from evaluation.online_evaluator import evaluate_sample
 
 logger = structlog.get_logger()
 
@@ -17,8 +17,7 @@ router = APIRouter()
 
 
 @router.post("/chat", response_model=ChatResponse)
-@traceable(name="chat", run_type="chain")
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatResponse:
     t0 = time.perf_counter()
 
     try:
@@ -42,6 +41,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         "chart_b64": None,
         "answer": "",
         "citations": [],
+        "chunks": [],
     }
 
     result = graph.invoke(initial)
@@ -60,6 +60,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         route=result.get("route"),
         citations=result.get("citations"),
         latency_ms=round(latency_ms, 1),
+        injection_blocked=injection_blocked,
     )
 
     log_query(
@@ -74,6 +75,14 @@ def chat(request: ChatRequest) -> ChatResponse:
             injection_blocked=injection_blocked,
         )
     )
+
+    if result.get("route") == "rag":
+        background_tasks.add_task(
+            evaluate_sample,
+            query=question,
+            answer=result["answer"],
+            chunks=result.get("chunks", []),
+        )
 
     return ChatResponse(
         answer=result["answer"],

@@ -58,7 +58,10 @@ resource "aws_apigatewayv2_route" "root" {
   authorizer_id      = var.enable_jwt_auth ? aws_apigatewayv2_authorizer.cognito[0].id : null
 }
 
-# Explicit OPTIONS routes bypass the JWT authorizer so CORS preflight succeeds
+
+# OPTIONS routes bypass the JWT authorizer so CORS preflight succeeds.
+# Managed cors_configuration adds headers but does NOT skip the JWT check on
+# ANY /{proxy+} — explicit NONE-auth OPTIONS routes are required.
 resource "aws_apigatewayv2_route" "options_proxy" {
   count     = var.enable_jwt_auth ? 1 : 0
   api_id    = aws_apigatewayv2_api.this.id

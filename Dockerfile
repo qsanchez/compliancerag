@@ -19,8 +19,6 @@ RUN pip install --no-cache-dir --prefer-binary \
     "structlog>=24.1" \
     "python-dotenv>=1.0" \
     "litellm>=1.0" \
-    "langsmith>=0.1" \
-    "langchain-core>=0.3" \
     "langgraph>=0.2" \
     "psycopg[binary]>=3.1" \
     "pgvector>=0.3" \

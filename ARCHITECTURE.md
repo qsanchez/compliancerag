@@ -2,7 +2,7 @@
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
 > Version: 1.0  
-> Status: Phases 1–7 complete · Phase 8 planned
+> Status: Phases 1–8 complete
 
 ---
 
@@ -59,8 +59,7 @@ To demonstrate production-ready GenAI architecture skills: RAG pipeline design, 
 | IaC | Terraform | Cloud-agnostic; consistent with multi-cloud architect profile |
 | CI/CD | GitHub Actions | Regression tests, RAGAS eval, Terraform plan on every PR |
 | Evaluation | RAGAS | Faithfulness, answer relevancy, context precision/recall |
-| LLM Observability | LangSmith | Traces, prompt versioning, experiment tracking |
-| Infra Observability | AWS CloudWatch | Metrics, cost alerts, latency dashboards |
+| Observability | AWS CloudWatch | Structured logs, metric filters, per-span latency, token cost, RAGAS alarm |
 
 ---
 
@@ -144,8 +143,7 @@ compliancerag/
 │   └── reports/                    # Evaluation outputs (gitignored)
 │
 ├── observability/                  # Monitoring config
-│   ├── cloudwatch/                 # Dashboard definitions (JSON)
-│   └── langsmith/                  # LangSmith project config
+│   └── cloudwatch/                 # Dashboard JSON + metric filter definitions
 │
 ├── tests/
 │   ├── unit/                       # Unit tests (all modules, mocked deps)
@@ -277,16 +275,16 @@ compliancerag/
 - [x] RAGAS Phase 5 evaluation — 30 questions across GDPR/NIS2/DORA: faithfulness 0.98, answer_relevancy 0.91, context_precision 0.83, context_recall 0.85
 - [x] Metrics evolution chart committed to repository (`evaluation/reports/metrics_evolution.svg`)
 
-### Phase 8 — CloudWatch-first Observability + Online Evaluation (planned)
+### Phase 8 — CloudWatch-first Observability + Online Evaluation ✓
 **Goal:** Replace LangSmith (unreachable from private VPC without a NAT gateway) with a complete CloudWatch-based observability stack. Add token-level cost tracking, per-span latency, RAG operational metrics, and a continuous online LLM-as-judge evaluator sampling production traffic.  
 **Exit criterion:** CloudWatch dashboard shows token counts, per-span latency, and rolling RAGAS scores from live traffic; LangSmith dependency fully removed.
 
-- [ ] Remove LangSmith — drop dependency, `@traceable` decorators, and all `LANGSMITH_*` env vars from config, Lambda, and CI
-- [ ] Enrich structured logs — add per-span timings (retrieve, rerank, generate), token counts, and token-based cost to every request log line
-- [ ] CloudWatch metric filters — extract token counts, per-span latency, cost, injection blocks, and no-answer rate as custom metrics
-- [ ] Update CloudWatch dashboard — replace Duration×memory cost proxy with token-based cost; add per-span latency and token count widgets
-- [ ] Online LLM-as-judge evaluator — sample 10% of production queries asynchronously; run RAGAS faithfulness + answer_relevancy on live traffic; emit scores to CloudWatch custom metrics
-- [ ] CloudWatch alarm on online RAGAS faithfulness — alert if 1-hour rolling average drops below 0.80
+- [x] Remove LangSmith — drop dependency, `@traceable` decorators, and all `LANGSMITH_*` env vars from config, Lambda, and CI
+- [x] Enrich structured logs — add per-span timings (retrieve, rerank, generate), token counts, and token-based cost to every request log line
+- [x] CloudWatch metric filters — extract token counts, per-span latency, cost, injection blocks, and no-answer rate as custom metrics
+- [x] Update CloudWatch dashboard — replace Duration×memory cost proxy with token-based cost; add per-span latency and token count widgets
+- [x] Online LLM-as-judge evaluator — sample 10% of production queries asynchronously; run RAGAS faithfulness + answer_relevancy on live traffic; emit scores to CloudWatch custom metrics
+- [x] CloudWatch alarm on online RAGAS faithfulness — alert if 1-hour rolling average drops below 0.80
 
 ---
 
@@ -395,4 +393,4 @@ API_PORT=8000
 3. **Model-agnostic via LiteLLM** — Bedrock today, OpenAI or Azure OpenAI tomorrow. One line change.
 4. **IaC everything** — no manual AWS console operations. Reproducible infra via Terraform.
 5. **Local-first development** — single Postgres instance (pgvector + audit log) via Docker Compose. No AWS required to develop and test the RAG pipeline.
-6. **Prompt versioning** — prompts are files, committed to Git, referenced by version in LangSmith traces.
+6. **Prompt versioning** — prompts are files, committed to Git, loaded by path — never inline strings.

@@ -16,7 +16,11 @@ def _router_node(state: AgentState) -> dict:
 
 def _rag_node(state: AgentState) -> dict:
     result = pipeline.run(state["question"], history=state.get("history"))
-    return {"answer": result["answer"], "citations": result["citations"]}
+    return {
+        "answer": result["answer"],
+        "citations": result["citations"],
+        "chunks": result["chunks"],
+    }
 
 
 def _analytics_node(state: AgentState) -> dict:

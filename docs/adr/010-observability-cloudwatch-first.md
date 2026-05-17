@@ -10,7 +10,7 @@ Replace LangSmith with a CloudWatch-based observability stack:
 1. **Structured logs** — enrich existing `logger.info("chat_request", ...)` with per-span timings (`retrieve_ms`, `rerank_ms`, `generate_ms`), token counts (`input_tokens`, `output_tokens`), and token-based cost (`cost_usd`) extracted from the LiteLLM response usage object.
 2. **CloudWatch metric filters** — extract `InputTokens`, `OutputTokens`, `CostUsd`, `RetrieveMs`, `RerankMs`, `GenerateMs`, `InjectionBlocked`, `NoAnswer` from the JSON log stream into custom metrics.
 3. **Updated dashboard** — replace the Duration × memory cost proxy with token-based cost; add per-span latency and token count widgets.
-4. **Online LLM-as-judge evaluator** — sample 10% of production queries asynchronously (FastAPI `BackgroundTask`); run RAGAS faithfulness + answer_relevancy against the live answer and retrieved context; write scores to `ComplianceRAG/prod` CloudWatch namespace via `boto3.put_metric_data`. Alert if 1-hour rolling faithfulness drops below 0.80.
+4. **Online LLM-as-judge evaluator** — sample 10% of production queries asynchronously (FastAPI `BackgroundTask`); run RAGAS faithfulness + answer_relevancy against the live answer and retrieved context; write scores to `ComplianceRAG/prod` CloudWatch namespace via `boto3.put_metric_data`. Alert if 1-hour rolling faithfulness drops below 0.80. `ragas` and `datasets` are not installed in the Lambda image (too large); the evaluator uses lazy imports and silently skips in Lambda — the alarm will only fire if the metric is explicitly emitted from a future environment where `ragas` is available.
 5. **Remove LangSmith** — drop `langsmith` dependency, `@traceable` decorators, and all `LANGSMITH_*` / `LANGCHAIN_TRACING_V2` environment variables.
 
 ## Rationale
@@ -45,4 +45,5 @@ Mitigations:
 - `langsmith` removed from `pyproject.toml`; CI no longer needs `LANGCHAIN_TRACING_V2=false`
 - `ONLINE_EVAL_SAMPLE_RATE` new env var (default `0.1`) — set to `0` to disable online evaluation
 - Online evaluation adds one LLM call per sampled request (~500 ms, ~800 tokens) in a background task; does not affect response latency
+- `ragas`/`datasets` use lazy imports — Lambda skips evaluation silently; works in full local env (`uv run task eval`)
 - CloudWatch custom metric costs: ~$0.30/month per metric (10 new metrics ≈ $3/month)
