@@ -2,7 +2,7 @@
 
 An enterprise-grade AI assistant that answers questions about regulatory compliance (GDPR, NIS2, DORA) by combining hybrid RAG over the full normative text — with exact article citations — and quantitative analytics over enforcement data (fines, incidents, trends), orchestrated by a LangGraph agent backed by AWS Bedrock and pgvector.
 
-**Live demo:** [compliancerag.qsanchez.dev](https://qsanchez.github.io/compliancerag/) · **Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md) · **ADRs:** [docs/adr/](docs/adr/)
+**Technical Presentation:** [compliancerag.qsanchez.dev](https://qsanchez.github.io/compliancerag/) · **Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md) · **ADRs:** [docs/adr/](docs/adr/)
 
 ---
 
