@@ -1,8 +1,8 @@
 # ComplianceRAG — Architecture Document
 
 > **Hybrid RAG + Analytical Agent for Regulatory Compliance**  
-> Version: 1.0 — All phases complete  
-> Status: Phases 1–7 complete
+> Version: 1.0  
+> Status: Phases 1–7 complete · Phase 8 planned
 
 ---
 
@@ -206,7 +206,7 @@ compliancerag/
 
 ### Phase 2 — Corpus Expansion + Hybrid Retrieval (complete)
 **Goal:** Extend corpus to all 3 regulations; replace pure semantic retrieval with hybrid + re-ranking; add full observability.  
-**Exit criterion:** RAGAS comparison shows hybrid ≥ Phase 1 baseline; LangSmith traces visible for every query.
+**Exit criterion:** RAGAS comparison shows hybrid ≥ Phase 1 baseline; traces visible for every query.
 
 - [x] NIS2 + DORA loaders — 46 NIS2 articles + 64 DORA articles via EUR-Lex HTML parser
 - [x] pgvector on RDS PostgreSQL (Terraform `modules/rds`)
@@ -270,50 +270,40 @@ compliancerag/
 **Goal:** Migrate production from eu-west-1 to us-east-1; replace the Lambda-incompatible PyTorch cross-encoder with a managed reranker; fix multi-regulation retrieval quality.  
 **Exit criterion:** Full pipeline running in us-east-1 with `RERANKER_ENABLED=true`; RAGAS Phase 5 evaluation confirms improvement over Phase 2 baseline.
 
-- [x] Migrated deployment from eu-west-1 to us-east-1 — updated `prod.tfvars`, Bedrock model prefix (`eu.` → `us.`), re-applied Terraform
-- [x] Built and pushed new Docker image to us-east-1 ECR repository
-- [x] Re-ingested GDPR, NIS2, DORA into us-east-1 RDS
-- [x] Re-loaded analytics Parquet to us-east-1 S3 bucket
-- [x] `rag/reranker.py` — replaced PyTorch `CrossEncoder` with LLM reranker: single `litellm.completion` call to Claude Haiku, returns JSON-ranked indices; fallback to vector-similarity order on failure (Cohere Rerank v3.5 was inaccessible — AWS Marketplace subscription wall; see ADR-009)
-- [x] Per-regulation retrieval diversity — `_detect_regulations()` detects regulation names in query; separate RRF search per regulation with `WHERE metadata->>'regulation' = %s` filter; slots allocated evenly across detected regulations
-- [x] Post-rerank balance enforcement — `_enforce_balance()` guarantees minimum quota per regulation in the final context window; context size scales with regulation count (`_TOP_K_PER_REG = 4`: single → 5, two → 8, three → 12 chunks)
-- [x] CI fixed — GitHub Actions runs `pytest tests/unit/` only; integration tests require live DB + Bedrock and must be run manually
+- [x] Migrated deployment from eu-west-1 to us-east-1 — Terraform re-apply, ECR image rebuild, full re-ingestion into RDS and S3
+- [x] LLM reranker — replaced PyTorch CrossEncoder (Lambda CPU timeout) with Claude Haiku via LiteLLM returning ranked passage indices; fallback to vector-similarity order on failure (see ADR-009)
+- [x] Per-regulation retrieval diversity — separate RRF search per detected regulation; post-rerank balance enforcement guarantees each regulation is represented in the final context
+- [x] CI fixed — unit tests only in GitHub Actions; integration tests require live infrastructure and run manually
 - [x] RAGAS Phase 5 evaluation — 30 questions across GDPR/NIS2/DORA: faithfulness 0.98, answer_relevancy 0.91, context_precision 0.83, context_recall 0.85
-- [x] Metrics evolution chart (`evaluation/reports/metrics_evolution.svg`) committed to repository
+- [x] Metrics evolution chart committed to repository (`evaluation/reports/metrics_evolution.svg`)
+
+### Phase 8 — CloudWatch-first Observability + Online Evaluation (planned)
+**Goal:** Replace LangSmith (unreachable from private VPC without a NAT gateway) with a complete CloudWatch-based observability stack. Add token-level cost tracking, per-span latency, RAG operational metrics, and a continuous online LLM-as-judge evaluator sampling production traffic.  
+**Exit criterion:** CloudWatch dashboard shows token counts, per-span latency, and rolling RAGAS scores from live traffic; LangSmith dependency fully removed.
+
+- [ ] Remove LangSmith — drop dependency, `@traceable` decorators, and all `LANGSMITH_*` env vars from config, Lambda, and CI
+- [ ] Enrich structured logs — add per-span timings (retrieve, rerank, generate), token counts, and token-based cost to every request log line
+- [ ] CloudWatch metric filters — extract token counts, per-span latency, cost, injection blocks, and no-answer rate as custom metrics
+- [ ] Update CloudWatch dashboard — replace Duration×memory cost proxy with token-based cost; add per-span latency and token count widgets
+- [ ] Online LLM-as-judge evaluator — sample 10% of production queries asynchronously; run RAGAS faithfulness + answer_relevancy on live traffic; emit scores to CloudWatch custom metrics
+- [ ] CloudWatch alarm on online RAGAS faithfulness — alert if 1-hour rolling average drops below 0.80
 
 ---
 
 ## 7. Architecture Decision Records (ADRs)
 
-### ADR-001 — Vector Store: pgvector over managed vector databases
-**Decision:** pgvector on RDS PostgreSQL as the single vector store (local dev and production).  
-**Rationale:** Production-grade, no vendor lock-in, native hybrid retrieval via pg_trgm. Since Postgres is already required for audit logging, running a second vector DB locally adds cost with no benefit.  
-**Trade-off:** Less turnkey than managed vector DBs; requires RDS management. Acceptable given Terraform IaC.
-
-### ADR-002 — LLM Provider: AWS Bedrock
-**Decision:** AWS Bedrock with Claude Haiku 4.5 (default) / Sonnet (complex queries).  
-**Rationale:** AWS-native, no GPU management, pay-per-token, enterprise security posture (VPC, IAM, no data retention). Consistent with AWS-first architecture.  
-**Trade-off:** Requires explicit model access activation per region. Mitigated by LiteLLM abstraction.
-
-### ADR-003 — Hybrid Retrieval: semantic + keyword + LLM re-ranking + diversity
-**Decision:** Combine pgvector semantic search with pg_trgm keyword search, fused with RRF, then re-rank with an LLM reranker (Claude via LiteLLM). For multi-regulation queries, per-regulation retrieval and post-rerank balance enforcement guarantee representation from each regulation.  
-**Rationale:** Regulatory text has both semantic content (concepts, obligations) and exact terminology (article numbers, defined terms). Re-ranking improves precision; per-regulation retrieval prevents one regulation from crowding out others in multi-regulation queries.  
-**Trade-off:** Higher latency than single-stage retrieval. Acceptable for compliance use case where precision > speed.
-
-### ADR-004 — Agent Framework: LangGraph
-**Decision:** LangGraph for agent orchestration.  
-**Rationale:** Explicit graph-based control flow is essential for a router that decides between RAG and analytics paths. Stateful, inspectable, testable — critical for regulated environments requiring auditability.  
-**Trade-off:** More verbose than simple LangChain chains. The explicitness is a feature in this context.
-
-### ADR-005 — Chunking Strategy: Recursive Character Splitting (Phase 1)
-**Decision:** Recursive character splitting (512 tokens, 50-token overlap) for Phase 1.  
-**Rationale:** Zero extra dependencies, fast, deterministic. Sufficient to validate the pipeline before optimising retrieval quality.  
-**Trade-off:** Structure-blind — chunk boundaries may fall mid-obligation. To be revisited with semantic chunking if RAGAS scores plateau.
-
-### ADR-009 — Reranker Infrastructure: LLM reranker over local inference
-**Decision:** Replace local `cross-encoder/ms-marco-MiniLM-L-6-v2` with an LLM-based reranker: a single `litellm.completion` call to Claude Haiku that receives all candidate chunks and returns a JSON-ranked index array.  
-**Rationale:** PyTorch JIT warm-up takes 30–60 s on Lambda's ARM64 CPU — consistently hitting the 60 s timeout. Cohere Rerank v3.5 via Bedrock was the original plan but proved inaccessible (requires an AWS Marketplace subscription that cannot be activated via API, CLI, or console; the Bedrock playground is disabled for reranking models). The LLM reranker uses existing Bedrock access, adds no new AWS resources, and uses chunk metadata (regulation, article, title) in its relevance judgement — which pure cross-encoders ignore.  
-**Trade-off:** One additional LLM call per query (~300–500 ms, ~500 tokens). Acceptable given reranking quality; fallback to vector-similarity order on any exception ensures no hard dependency.
+| ADR | Title | Status |
+|---|---|---|
+| [ADR-001](docs/adr/001-vector-store.md) | Vector Store: pgvector over managed vector databases | Accepted |
+| [ADR-002](docs/adr/002-llm-provider.md) | Embedding Model: Amazon Titan Embeddings v2 | Accepted |
+| [ADR-003](docs/adr/003-hybrid-retrieval.md) | Hybrid Retrieval: semantic + keyword + re-ranking + diversity | Accepted |
+| [ADR-004](docs/adr/004-agent-framework.md) | Agent Framework: LangGraph | Accepted |
+| [ADR-005](docs/adr/005-chunking-strategy.md) | Chunking Strategy: Recursive Character Splitting | Accepted |
+| [ADR-006](docs/adr/006-serving-layer.md) | Serving Layer: Lambda for PoC, Fargate deferred | Accepted |
+| [ADR-007](docs/adr/007-ingestion-pipeline-execution.md) | Ingestion Pipeline Execution: Local for PoC | Accepted |
+| [ADR-008](docs/adr/008-prompt-injection-defense.md) | Prompt Injection Defense Strategy | Accepted |
+| [ADR-009](docs/adr/009-reranker-infrastructure.md) | Reranker Infrastructure: LLM reranker over local inference | Superseded → Amended |
+| [ADR-010](docs/adr/010-observability-cloudwatch-first.md) | Observability: CloudWatch-first over LangSmith | Accepted |
 
 ---
 
@@ -323,14 +313,13 @@ compliancerag/
 - Python 3.11+
 - Docker + Docker Compose
 - AWS CLI configured (for Bedrock calls)
-- LangSmith account (free tier)
 
 ### Quick start
 
 ```bash
 git clone https://github.com/<your-handle>/compliancerag
 cd compliancerag
-cp .env.example .env          # fill in AWS credentials + LangSmith API key
+cp .env.example .env          # fill in AWS credentials
 
 task local_infra:up           # start Postgres + pgvector
 uv sync                       # install dependencies
@@ -385,14 +374,11 @@ ATHENA_TABLE_FINES=gdpr_fines
 ATHENA_S3_OUTPUT=s3://...          # terraform output athena_s3_output
 ATHENA_S3_DATA_BUCKET=...          # terraform output analytics_data_bucket
 
-# LLMOps
-LANGSMITH_API_KEY=
-LANGSMITH_PROJECT=compliancerag
-LANGCHAIN_TRACING_V2=true
+# Reranker
+RERANKER_ENABLED=true
 
-# Reranker (disabled on Lambda — CPU inference too slow; enable on ECS)
-RERANKER_ENABLED=false
-RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
+# Online evaluation
+ONLINE_EVAL_SAMPLE_RATE=0.1
 
 # API
 API_KEY=                           # simple API key auth for PoC
