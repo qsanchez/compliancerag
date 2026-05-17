@@ -174,9 +174,7 @@ compliancerag/
 ### Quantitative enforcement data (Analytics)
 | Source | Content | Format |
 |---|---|---|
-| GDPR Enforcement Tracker (enforcementtracker.com) | All GDPR fines by country, company, article, date | CSV (public) |
-| ENISA Threat Landscape reports | Incident statistics by sector and year | PDF/structured |
-| ICO / AEPD public registers | National DPA decisions | CSV/JSON |
+| GDPR Enforcement Tracker (enforcementtracker.com) | All GDPR fines by country, company, article, date — 3,142 rows | CSV (public) |
 
 ---
 
