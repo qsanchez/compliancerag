@@ -179,3 +179,24 @@ resource "aws_cloudwatch_metric_alarm" "lambda_error_rate" {
     Environment = var.environment
   }
 }
+
+# Billing alarm — fires when estimated monthly AWS charges exceed the threshold.
+# Requires billing alerts to be enabled in the account:
+#   AWS Console → Billing → Billing preferences → Receive billing alerts
+resource "aws_cloudwatch_metric_alarm" "billing" {
+  alarm_name          = "${local.name_prefix}-estimated-charges"
+  alarm_description   = "Estimated monthly AWS charges exceeded $${var.billing_alarm_threshold_usd}"
+  namespace           = "AWS/Billing"
+  metric_name         = "EstimatedCharges"
+  dimensions          = { Currency = "USD" }
+  statistic           = "Maximum"
+  period              = 86400
+  evaluation_periods  = 1
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = var.billing_alarm_threshold_usd
+  treat_missing_data  = "notBreaching"
+
+  tags = {
+    Environment = var.environment
+  }
+}

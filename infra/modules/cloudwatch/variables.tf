@@ -28,3 +28,9 @@ variable "lambda_memory_mb" {
   type        = number
   default     = 2048
 }
+
+variable "billing_alarm_threshold_usd" {
+  description = "Monthly estimated charges (USD) that trigger the billing alarm"
+  type        = number
+  default     = 50
+}

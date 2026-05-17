@@ -32,3 +32,15 @@ variable "cognito_user_pool_client_id" {
   type        = string
   default     = ""
 }
+
+variable "throttle_rate_limit" {
+  description = "Sustained requests per second across all routes"
+  type        = number
+  default     = 5
+}
+
+variable "throttle_burst_limit" {
+  description = "Maximum concurrent requests (token bucket size)"
+  type        = number
+  default     = 20
+}
