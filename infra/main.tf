@@ -96,6 +96,12 @@ variable "online_eval_sample_rate" {
   default = 0.1
 }
 
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+  default     = ""
+}
+
 # ── Modules ───────────────────────────────────────────────────────────────────
 
 module "networking" {
@@ -184,6 +190,7 @@ module "cloudwatch" {
   lambda_function_name    = module.lambda.function_name
   rds_instance_identifier = "compliancerag-${var.environment}"
   lambda_memory_mb        = 2048
+  alarm_email             = var.alarm_email
 }
 
 # ── VPC Endpoints ─────────────────────────────────────────────────────────────

@@ -34,3 +34,9 @@ variable "billing_alarm_threshold_usd" {
   type        = number
   default     = 50
 }
+
+variable "alarm_email" {
+  description = "Email address that receives CloudWatch alarm notifications"
+  type        = string
+  default     = ""
+}

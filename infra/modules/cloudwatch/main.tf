@@ -2,6 +2,21 @@ locals {
   name_prefix = "compliancerag-${var.environment}"
 }
 
+resource "aws_sns_topic" "alarms" {
+  name = "${local.name_prefix}-alarms"
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  count     = var.alarm_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.alarms.arn
+  protocol  = "email"
+  endpoint  = var.alarm_email
+}
+
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = local.name_prefix
   dashboard_body = templatefile(
@@ -119,6 +134,7 @@ resource "aws_cloudwatch_metric_alarm" "online_faithfulness" {
   evaluation_periods  = 1
   threshold           = 0.80
   alarm_description   = "Online RAGAS faithfulness dropped below 0.80 — retrieval or generation quality may have degraded"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
   treat_missing_data  = "notBreaching"
 
   metric_query {
@@ -144,6 +160,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_error_rate" {
   evaluation_periods  = 2
   threshold           = 5
   alarm_description   = "Lambda error rate exceeded 5% for 2 consecutive 5-minute windows"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
   treat_missing_data  = "notBreaching"
 
   metric_query {
@@ -186,6 +203,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_error_rate" {
 resource "aws_cloudwatch_metric_alarm" "billing" {
   alarm_name          = "${local.name_prefix}-estimated-charges"
   alarm_description   = "Estimated monthly AWS charges exceeded $${var.billing_alarm_threshold_usd}"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
   namespace           = "AWS/Billing"
   metric_name         = "EstimatedCharges"
   dimensions          = { Currency = "USD" }
