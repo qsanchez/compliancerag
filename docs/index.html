@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ComplianceRAG — Technical Overview</title>
+  <link rel="icon" href="https://raw.githubusercontent.com/qsanchez/brand/main/favicon/favicon.ico" type="image/x-icon">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d1117;
+      --bg2:     #0a0d13;
+      --sidebar: #010409;
+      --card:    #161b22;
+      --border:  #30363d;
+      --text:    #c9d1d9;
+      --muted:   #8b949e;
+      --head:    #f0f6fc;
+      --accent:  #58a6ff;
+      --green:   #3fb950;
+      --orange:  #d29922;
+      --sw:      188px;
+      --gh:      "https://github.com/qsanchez/compliancerag/blob/main";
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14.5px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: var(--sw);
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      overflow-y: auto;
+    }
+
+    .sb-brand {
+      padding: 18px 15px 15px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+    .sb-brand svg { width: 30px; height: 23px; flex-shrink: 0; }
+    .sb-name { font-size: 13px; font-weight: 600; color: var(--head); }
+    .sb-name em { color: var(--accent); font-style: normal; }
+
+    .nav-label {
+      padding: 15px 15px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .nav-list { list-style: none; padding: 0 6px; }
+    .nav-list a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      color: var(--muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: color .12s, background .12s, border-color .12s;
+    }
+    .nav-list a:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .nav-list a.active {
+      color: var(--accent);
+      background: rgba(88,166,255,.08);
+      border-left-color: var(--accent);
+    }
+    .nav-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+      opacity: .35;
+    }
+    .nav-list a.active .nav-dot { opacity: 1; }
+
+    .sb-bottom {
+      margin-top: auto;
+      padding: 14px 15px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .slide-counter { font-size: 12px; color: var(--muted); }
+    .slide-counter strong { color: var(--text); font-weight: 600; }
+    .key-hint { font-size: 10px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+    kbd {
+      display: inline-block;
+      padding: 1px 4px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-size: 9.5px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+    }
+
+    /* ── Content ── */
+    #content { margin-left: var(--sw); }
+
+    section {
+      min-height: 100vh;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    section:last-of-type { min-height: auto; }
+    section:nth-child(even) { background: var(--bg2); }
+
+    /* watermark slide number */
+    .snum {
+      position: absolute;
+      top: 24px; right: 40px;
+      font-size: 80px;
+      font-weight: 800;
+      color: rgba(255,255,255,.025);
+      line-height: 1;
+      user-select: none;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 68px 72px;
+    }
+
+    /* ── Type ── */
+    h1 { font-size: 36px; font-weight: 700; color: var(--head); letter-spacing: -.8px; margin-bottom: 4px; }
+    h2 { font-size: 21px; font-weight: 700; color: var(--head); padding-bottom: 13px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
+    h3 { font-size: 13.5px; font-weight: 600; color: var(--head); margin-bottom: 6px; }
+    p  { margin-bottom: 14px; line-height: 1.75; }
+    p:last-child { margin-bottom: 0; }
+
+    code {
+      font-family: 'SF Mono','Cascadia Code',Consolas,monospace;
+      font-size: 12px;
+      background: rgba(110,118,129,.1);
+      color: #79c0ff;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Badges ── */
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 500;
+      background: rgba(88,166,255,.08);
+      border: 1px solid rgba(88,166,255,.2);
+      color: var(--accent);
+    }
+    .badge.green {
+      background: rgba(63,185,80,.08);
+      border-color: rgba(63,185,80,.2);
+      color: var(--green);
+    }
+
+    /* ── Overview (title slide) ── */
+    .overview-p { font-size: 15.5px; line-height: 1.8; max-width: 800px; margin-bottom: 18px; }
+    .overview-p:last-child { margin-bottom: 0; }
+
+    .ov-stats {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--card);
+      max-width: 800px;
+      margin: 32px 0 36px;
+    }
+    .ov-stat {
+      flex: 1;
+      padding: 18px 20px;
+      border-right: 1px solid var(--border);
+    }
+    .ov-stat:last-child { border-right: none; }
+    .ov-val {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--head);
+      font-family: 'SF Mono', Consolas, monospace;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+    .ov-val.green { color: var(--green); }
+    .ov-lbl { font-size: 11px; color: var(--muted); line-height: 1.45; }
+
+    .ov-sections { max-width: 800px; margin-top: 8px; }
+    .ov-sec { margin-bottom: 28px; }
+    .ov-sec:last-child { margin-bottom: 0; }
+    .ov-sec-lbl {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .ov-sec p {
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--text);
+      margin: 0;
+    }
+
+    /* ── Architecture ── */
+    .diagram-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .diagram-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .diagram-lbl {
+      padding: 7px 13px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .diagram-lbl span {
+      font-size: 9.5px;
+      opacity: .5;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .diagram-card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      background: #fff;
+      cursor: zoom-in;
+      transition: opacity .15s;
+    }
+    .diagram-card img:hover { opacity: .88; }
+
+    /* ── Lightbox ── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.93);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img {
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.8);
+      cursor: default;
+    }
+    #lb-close {
+      position: absolute;
+      top: 18px; right: 22px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 15px;
+      width: 34px; height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    #lb-close:hover { background: var(--border); }
+
+    /* ── Features ── */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .feat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+    }
+    .feat h3 { font-size: 13px; }
+    .feat p  { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; line-height: 1.6; flex: 1; }
+    .evidence {
+      font-family: 'SF Mono',Consolas,monospace;
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(0,0,0,.3);
+      border-left: 2px solid var(--accent);
+      padding: 6px 10px;
+      border-radius: 0 4px 4px 0;
+      line-height: 1.5;
+    }
+    .evidence a { color: #79c0ff; }
+    .evidence a:hover { text-decoration: underline; }
+
+    /* ── ADRs ── */
+    .adr {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 26px;
+      margin-bottom: 16px;
+    }
+    .adr-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      gap: 14px;
+    }
+    .adr-num { font-size: 10.5px; font-weight: 600; color: var(--accent); letter-spacing: .5px; margin-bottom: 3px; }
+    .adr-title { font-size: 15px; font-weight: 600; color: var(--head); }
+    .adr-file { font-size: 11px; margin-top: 4px; }
+    .adr-file a { color: var(--muted); }
+    .adr-file a:hover { color: var(--accent); }
+    .pill {
+      font-size: 11px;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .p-ok  { background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.3); color: var(--green); }
+    .p-amd { background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3); color: var(--orange); }
+    .adr-body { font-size: 13.5px; line-height: 1.75; }
+    .tradeoff {
+      margin-top: 13px;
+      padding: 11px 13px;
+      background: rgba(210,153,34,.05);
+      border-left: 3px solid var(--orange);
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .tradeoff strong { color: var(--orange); }
+    .pivots { list-style: none; padding: 0; margin: 12px 0 0; }
+    .pivots li {
+      font-size: 13px;
+      color: var(--text);
+      padding: 11px 0 11px 38px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      line-height: 1.65;
+    }
+    .pivots li:last-child { border-bottom: none; padding-bottom: 0; }
+    .pn {
+      position: absolute;
+      left: 0; top: 11px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: rgba(88,166,255,.12);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Stack table ── */
+    .stk {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .stk th {
+      text-align: left;
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--muted);
+      padding: 9px 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stk td {
+      padding: 9px 13px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
+      vertical-align: top;
+    }
+    .stk tr:last-child td { border-bottom: none; }
+    .stk tr:hover td { background: rgba(255,255,255,.02); }
+    .tl { color: var(--muted); white-space: nowrap; }
+    .tt { color: var(--head); font-weight: 500; white-space: nowrap; }
+    .tw { color: var(--text); line-height: 1.55; }
+
+    /* ── Evaluation ── */
+    .score-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin-bottom: 28px; }
+    .score-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+    .sv { font-size: 30px; font-weight: 700; color: var(--green); font-family: 'SF Mono',Consolas,monospace; letter-spacing: -1px; }
+    .sl { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+    .chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 26px 26px 18px; }
+    .chart-cap { font-size: 12.5px; color: var(--muted); margin-top: 16px; line-height: 1.7; }
+    canvas { display: block; width: 100%; }
+
+    /* ── Footer ── */
+    footer {
+      margin-left: var(--sw);
+      padding: 18px 0;
+      border-top: 1px solid var(--border);
+    }
+    .footer-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 72px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .footer-inner svg { width: 20px; height: 15px; opacity: .55; flex-shrink: 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+      #sidebar { display: none; }
+      #content, footer { margin-left: 0; }
+      .inner { padding: 44px 24px; }
+      .diagram-grid, .feat-grid { grid-template-columns: 1fr; }
+      .score-row { grid-template-columns: 1fr 1fr; }
+      section { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Lightbox -->
+<div id="lightbox">
+  <button id="lb-close" onclick="closeLb()" aria-label="Close">✕</button>
+  <img id="lb-img" src="" alt="">
+</div>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="sb-brand">
+    <svg viewBox="0 0 321 241" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="320" height="240" rx="36" ry="36" fill="#003366"/>
+      <path d="M80 120C80 75.82 115.82 40 160 40C181.22 40 201.57 48.43 216.57 63.43C231.57 78.43 240 98.78 240 120C240 141.22 231.57 161.57 216.57 176.57C201.57 191.57 181.22 200 160 200C138.78 200 118.43 191.57 103.43 176.57C88.43 161.57 80 141.22 80 120ZM160 59.62C126.65 59.62 99.62 86.65 99.62 120C99.62 153.35 126.65 180.38 160 180.38C193.35 180.38 220.38 153.35 220.38 120C220.38 86.65 193.35 59.62 160 59.62Z" fill="#fff"/>
+      <path d="M240 200C209.31 200 181.32 182.44 167.97 154.8L184.53 146.8C194.82 168.08 216.37 181.6 240 181.6Z" fill="#fff"/>
+    </svg>
+    <div class="sb-name">Compliance<em>RAG</em></div>
+  </div>
+  <div class="nav-label">Navigate</div>
+  <ul class="nav-list">
+    <li><a href="#overview"     class="active"><span class="nav-dot"></span>Overview</a></li>
+    <li><a href="#architecture"               ><span class="nav-dot"></span>Architecture</a></li>
+    <li><a href="#stack"                      ><span class="nav-dot"></span>Stack</a></li>
+    <li><a href="#features"                   ><span class="nav-dot"></span>Features</a></li>
+    <li><a href="#evaluation"                 ><span class="nav-dot"></span>Evaluation</a></li>
+    <li><a href="#adrs"                       ><span class="nav-dot"></span>Decisions</a></li>
+  </ul>
+  <div class="sb-bottom">
+    <div class="slide-counter"><strong id="snum">1</strong> / 6</div>
+    <div class="key-hint"><kbd>↑</kbd><kbd>↓</kbd> navigate &nbsp;<kbd>Esc</kbd> close</div>
+  </div>
+</nav>
+
+<!-- Main -->
+<main id="content">
+
+  <!-- 01 Overview -->
+  <section id="overview">
+    <span class="snum">01</span>
+    <div class="inner" style="padding-top:100px;">
+      <h1>ComplianceRAG</h1>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:0;">Hybrid RAG + Analytical Agent for Regulatory Compliance</p>
+      <div style="display:flex;gap:20px;margin-top:14px;">
+        <a href="https://github.com/qsanchez/compliancerag" target="_blank" rel="noopener" style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:5px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          github.com/qsanchez/compliancerag
+        </a>
+        <a href="https://d14g1g1k3bifg.cloudfront.net/" target="_blank" rel="noopener" style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:5px;">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/><path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/></svg>
+          Live demo
+        </a>
+      </div>
+
+      <!-- Key numbers -->
+      <div class="ov-stats">
+        <div class="ov-stat">
+          <div class="ov-val">3</div>
+          <div class="ov-lbl">Regulations<br>GDPR · NIS2 · DORA</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-val">110<sup style="font-size:.55em;vertical-align:super">+</sup></div>
+          <div class="ov-lbl">Normative articles<br>indexed</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-val">3,142</div>
+          <div class="ov-lbl">Real GDPR fines<br>in the dataset</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-val green">0.98</div>
+          <div class="ov-lbl">RAGAS Faithfulness<br>Golden Dataset: 30 questions</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-val">8</div>
+          <div class="ov-lbl">Delivery phases<br>complete</div>
+        </div>
+      </div>
+
+      <div class="ov-sections">
+
+        <div class="ov-sec">
+          <div class="ov-sec-lbl">What it is</div>
+          <p>A production-grade AI assistant for GDPR, NIS2, and DORA regulatory compliance.
+          Ask it a question and it returns a grounded answer with exact article citations from
+          110+ normative articles. Ask it about enforcement trends and it queries a live 3,142-row
+          GDPR fines dataset to surface penalty breakdowns, country comparisons, and fine
+          distributions — routing each query automatically to the right pipeline.</p>
+        </div>
+
+        <div class="ov-sec">
+          <div class="ov-sec-lbl">Why I built it</div>
+          <p>Most GenAI projects live in notebooks or rely on pre-built cloud AI services at a high level. This one covers the complete engineering stack built hands-on on AWS — Bedrock for LLM and embeddings, pgvector on RDS for hybrid retrieval, LangGraph for agentic orchestration, Lambda + API Gateway for serving, and CloudWatch for observability. No pre-assembled AI pipelines: every component is implemented from the ground up with explicit architectural trade-offs documented in ADRs.</p>
+          <p>LLMOps discipline is built in from day one: prompt templates are version-controlled in Git, RAGAS evaluation against a fixed golden dataset is the quality gate for every retrieval change before it merges, and an online LLM-as-judge samples 10% of live traffic to detect distribution drift continuously — not just at evaluation time.</p>
+        </div>
+
+        <div class="ov-sec">
+          <div class="ov-sec-lbl">How I built it</div>
+          <p>Every significant technical decision is recorded in an ADR with explicit alternatives
+          and trade-offs documented. Implementation was AI-first: I directed Claude Code through
+          each phase as architect and reviewer. The discipline shows in what didn't get built:
+          no speculative features, no premature abstractions, and retrieval quality tracked with
+          a RAGAS golden dataset on every change.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 Architecture -->
+  <section id="architecture">
+    <span class="snum">02</span>
+    <div class="inner">
+      <h2>Architecture</h2>
+      <div class="diagram-grid">
+        <div class="diagram-card">
+          <div class="diagram-lbl">Context <span>click to expand</span></div>
+          <img src="diagrams/context.svg" alt="Context diagram" loading="lazy">
+        </div>
+        <div class="diagram-card">
+          <div class="diagram-lbl">Data Flow <span>click to expand</span></div>
+          <img src="diagrams/data-flow.svg" alt="Data flow diagram" loading="lazy">
+        </div>
+        <div class="diagram-card">
+          <div class="diagram-lbl">Infrastructure <span>click to expand</span></div>
+          <img src="diagrams/infra.svg" alt="Infrastructure diagram" loading="lazy">
+        </div>
+        <div class="diagram-card">
+          <div class="diagram-lbl">Module Dependencies <span>click to expand</span></div>
+          <img src="diagrams/code.svg" alt="Module dependency diagram" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 Stack -->
+  <section id="stack">
+    <span class="snum">03</span>
+    <div class="inner">
+      <h2>Stack</h2>
+      <table class="stk">
+        <thead>
+          <tr>
+            <th style="width:120px">Layer</th>
+            <th style="width:220px">Technology</th>
+            <th>Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="tl">LLM</td><td class="tt">AWS Bedrock — Claude Haiku 4.5</td><td class="tw">Selected for latency/cost balance on compliance Q&amp;A; Claude Sonnet available via one LiteLLM config change for higher-complexity tasks</td></tr>
+          <tr><td class="tl">Embeddings</td><td class="tt">Titan Embeddings v2</td><td class="tw">1,536-dim vectors; AWS-native data residency; Cohere Embed v3 (Bedrock) identified as next upgrade candidate — measurable via RAGAS A/B before merging</td></tr>
+          <tr><td class="tl">LLM abstraction</td><td class="tt">LiteLLM</td><td class="tw">Model-agnostic — swap Claude for GPT-4o, Llama 3, or Azure OpenAI with a single config change; no LLM provider lock-in</td></tr>
+          <tr><td class="tl">Orchestration</td><td class="tt">LangGraph</td><td class="tw">Explicit, auditable routing graph; typed state; fixed depth; each node unit-testable</td></tr>
+          <tr><td class="tl">Vector store</td><td class="tt">pgvector on Amazon RDS</td><td class="tw">No vendor lock-in; hybrid retrieval in one DB; cost-effective at PoC scale</td></tr>
+          <tr><td class="tl">Hybrid retrieval</td><td class="tt">pgvector + pg_trgm + RRF</td><td class="tw">Semantic + keyword + metadata, rank-fused without tuned interpolation weights</td></tr>
+          <tr><td class="tl">Analytics</td><td class="tt">Amazon S3 + Athena</td><td class="tw">Serverless SQL over Parquet; no running cost between queries</td></tr>
+          <tr><td class="tl">API</td><td class="tt">FastAPI + Mangum</td><td class="tw">Async, typed, OpenAPI docs; Mangum adapts ASGI to Lambda events</td></tr>
+          <tr><td class="tl">Serving</td><td class="tt">Lambda + API Gateway</td><td class="tw">Zero idle cost; Cognito JWT authorizer on /chat; OAC-secured S3 frontend</td></tr>
+          <tr><td class="tl">Auth</td><td class="tt">Amazon Cognito</td><td class="tw">Hosted UI + User Pool; JWT tokens validated at API Gateway layer</td></tr>
+          <tr><td class="tl">Frontend</td><td class="tt">S3 + CloudFront</td><td class="tw">SPA routing, OAC, HTTPS; vanilla JS — no build step</td></tr>
+          <tr><td class="tl">IaC</td><td class="tt">Terraform</td><td class="tw">Cloud-agnostic; 9 modules; no manual AWS console operations</td></tr>
+          <tr><td class="tl">CI/CD</td><td class="tt">GitHub Actions</td><td class="tw">Lint, typecheck, unit tests on every PR; tf-validate on infra changes</td></tr>
+          <tr><td class="tl">Evaluation</td><td class="tt">RAGAS</td><td class="tw">Faithfulness, answer relevancy, context precision/recall; offline + online</td></tr>
+          <tr><td class="tl">Observability</td><td class="tt">AWS CloudWatch</td><td class="tw">Structured JSON logs, 10 custom metric filters, per-span latency, token cost</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 04 Features -->
+  <section id="features">
+    <span class="snum">04</span>
+    <div class="inner">
+      <h2>Technical Features</h2>
+      <div class="feat-grid">
+
+        <div class="feat">
+          <h3>Hybrid RAG Pipeline</h3>
+          <p>Three retrieval legs fused via RRF (k=60): pgvector cosine similarity, <code>pg_trgm</code> trigram keyword match, and article metadata scoring. Each leg fetches <code>top_k × 3</code> candidates; fusion merges by rank position alone — no interpolation weights to tune.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/rag/retriever.py" target="_blank" rel="noopener">rag/retriever.py</a> — _fetch_legs(), _fuse(), _RRF_K = 60</div>
+        </div>
+
+        <div class="feat">
+          <h3>LLM Reranker</h3>
+          <p>All candidates ranked in a single Claude Haiku prompt; each passage gets a <code>regulation · Art.N · title</code> metadata header. Returns a JSON array of ranked indices. Falls back to vector-similarity order on any exception — never hard-fails.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/rag/reranker.py" target="_blank" rel="noopener">rag/reranker.py</a> — rerank() → json.loads(ranked_indices)</div>
+        </div>
+
+        <div class="feat">
+          <h3>Per-Regulation Diversity</h3>
+          <p>Cross-regulation queries trigger separate RRF searches per regulation with a <code>WHERE metadata->>'regulation'</code> filter. Post-rerank quota enforcement guarantees each detected regulation occupies at least ⌊top_k/n⌋ context slots.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/rag/pipeline.py" target="_blank" rel="noopener">rag/pipeline.py</a> — _enforce_balance() · <a href="https://github.com/qsanchez/compliancerag/blob/main/rag/retriever.py" target="_blank" rel="noopener">retriever.py</a> — _detect_regulations()</div>
+        </div>
+
+        <div class="feat">
+          <h3>LangGraph Agentic Router</h3>
+          <p>Three-node <code>StateGraph</code> (router → rag | analytics) with a typed <code>AgentState</code>. Hard conditional edge — not an LLM loop. Fixed execution depth of 2. Each node is a plain Python function, unit-testable without the full graph.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/agent/graph.py" target="_blank" rel="noopener">agent/graph.py</a> — 53 lines · <a href="https://github.com/qsanchez/compliancerag/blob/main/agent/router.py" target="_blank" rel="noopener">agent/router.py</a> — classify() max_tokens=5</div>
+        </div>
+
+        <div class="feat">
+          <h3>Quantitative Analytics</h3>
+          <p>LLM generates Athena SQL from natural language. SQL validator rejects any non-<code>SELECT</code> statement before execution. Results summarised in 2-3 sentences; charts returned as base64 matplotlib PNG. Dataset: 3,142 real GDPR enforcement records.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/analytics_query/query_metrics.py" target="_blank" rel="noopener">analytics_query/query_metrics.py</a> — _validate_sql(), _generate_sql()</div>
+        </div>
+
+        <div class="feat">
+          <h3>Per-Span Observability</h3>
+          <p>Every request emits a structured JSON log with <code>retrieve_ms</code>, <code>rerank_ms</code>, <code>generate_ms</code>, <code>input_tokens</code>, <code>output_tokens</code>, and <code>cost_usd</code>. Ten CloudWatch metric filters extract these fields; dashboard shows per-span latency and token cost.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/rag/pipeline.py#L112" target="_blank" rel="noopener">rag/pipeline.py:112</a> — logger.info("pipeline_spans", ...)</div>
+        </div>
+
+        <div class="feat">
+          <h3>Online LLM-as-Judge</h3>
+          <p>10% of production queries sampled asynchronously via FastAPI <code>BackgroundTask</code>. RAGAS faithfulness + answer_relevancy run on live traffic; scores emitted to CloudWatch. Alarm fires if 1-hour rolling faithfulness drops below 0.80.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/docs/adr/010-observability-cloudwatch-first.md" target="_blank" rel="noopener">ADR-010</a> — ONLINE_EVAL_SAMPLE_RATE=0.1</div>
+        </div>
+
+        <div class="feat">
+          <h3>Audit Trail</h3>
+          <p>Every query written to a Postgres <code>audit_log</code> table: question, route, answer, citations (JSONB), model version, latency_ms, and injection_blocked flag. Schema created idempotently on first write; failure never propagates to the user response.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/audit/logger.py" target="_blank" rel="noopener">audit/logger.py</a> — log_query(AuditRecord)</div>
+        </div>
+
+        <div class="feat">
+          <h3>Prompt Injection Defense</h3>
+          <p>11 compiled regex patterns covering common injection templates. Unicode NFC normalization and control-character stripping applied before pattern matching. Blocked queries flagged in the audit log with <code>injection_blocked=True</code>.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/agent/sanitizer.py" target="_blank" rel="noopener">agent/sanitizer.py</a> — 11 _COMPILED patterns, unicodedata.normalize("NFC")</div>
+        </div>
+
+        <div class="feat">
+          <h3>Production Deployment</h3>
+          <p>FastAPI on Lambda (Mangum ASGI adapter) behind HTTP API Gateway. Cognito User Pool + Hosted UI with JWT authorizer on <code>/chat</code>. Frontend on S3 + CloudFront with OAC and SPA routing. One-command deploy: <code>task app:deploy</code>.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/tree/main/infra/modules" target="_blank" rel="noopener">infra/modules/</a> — lambda, api_gateway, cognito, frontend</div>
+        </div>
+
+        <div class="feat">
+          <h3>IaC — 9 Terraform Modules</h3>
+          <p>Fully reproducible infrastructure: <code>networking</code>, <code>rds</code> (pgvector), <code>s3</code>, <code>athena</code>, <code>lambda</code>, <code>api_gateway</code>, <code>cognito</code>, <code>frontend</code>, <code>cloudwatch</code>. Local and prod environments via <code>environments/*.tfvars</code>. No manual AWS console operations.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/infra/main.tf" target="_blank" rel="noopener">infra/main.tf</a> + <a href="https://github.com/qsanchez/compliancerag/tree/main/infra/modules" target="_blank" rel="noopener">infra/modules/</a> (9 modules)</div>
+        </div>
+
+        <div class="feat">
+          <h3>LLMOps &amp; CI/CD</h3>
+          <p>Prompt templates are version-controlled in Git as plain text files, loaded by path at runtime — never inline strings. GitHub Actions runs ruff lint, format check, mypy, and unit tests on every PR. RAGAS evaluation and integration tests require live AWS infrastructure (Bedrock + private RDS) and run manually — the golden dataset is the quality gate before any retrieval change merges (see ADR-007). A separate workflow validates <code>terraform fmt + validate</code> on infra changes.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/.github/workflows/ci.yml" target="_blank" rel="noopener">.github/workflows/ci.yml</a> — lint + typecheck + unit tests &nbsp;·&nbsp; <a href="https://github.com/qsanchez/compliancerag/tree/main/rag/prompts" target="_blank" rel="noopener">rag/prompts/</a> — versioned prompt files &nbsp;·&nbsp; <a href="https://github.com/qsanchez/compliancerag/blob/main/docs/adr/007-ingestion-pipeline-execution.md" target="_blank" rel="noopener">ADR-007</a></div>
+        </div>
+
+        <div class="feat">
+          <h3>Context Engineering</h3>
+          <p>Retrieved chunks assembled into a structured context window with exact article citations by <code>context_builder.py</code>. System and user prompt templates versioned in Git under <code>rag/prompts/</code> — loaded by path, never inline strings. Pydantic v2 models enforce structured JSON outputs at the API boundary. Injection-aware: sanitised queries only; blocked input never reaches context assembly.</p>
+          <div class="evidence"><a href="https://github.com/qsanchez/compliancerag/blob/main/rag/context_builder.py" target="_blank" rel="noopener">rag/context_builder.py</a> &nbsp;·&nbsp; <a href="https://github.com/qsanchez/compliancerag/tree/main/rag/prompts" target="_blank" rel="noopener">rag/prompts/</a> — rag_system.txt + rag_user.txt</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 Evaluation -->
+  <section id="evaluation">
+    <span class="snum">05</span>
+    <div class="inner">
+      <h2>Evaluation — RAGAS</h2>
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:22px;">Final scores — 30 questions across GDPR, NIS2, DORA — LLM reranker + per-regulation diversity. <a href="https://github.com/qsanchez/compliancerag/tree/main/evaluation/reports" target="_blank" rel="noopener">evaluation/reports/ ↗</a></p>
+
+      <div class="score-row">
+        <div class="score-card"><div class="sv">0.98</div><div class="sl">Faithfulness</div></div>
+        <div class="score-card"><div class="sv">0.91</div><div class="sl">Answer Relevancy</div></div>
+        <div class="score-card"><div class="sv">0.83</div><div class="sl">Context Precision</div></div>
+        <div class="score-card"><div class="sv">0.85</div><div class="sl">Context Recall</div></div>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+        <p class="chart-cap">
+          <strong style="color:var(--text)">The Phase 2 regression is a diagnostic signal, not a failure.</strong>
+          Phase 1 evaluated 10 GDPR questions with semantic-only retrieval — scores were strong for a
+          single-regulation corpus. Phase 2 expanded to 30 questions across three regulations with the
+          cross-encoder reranker still on Chroma; without hybrid retrieval or per-regulation diversity
+          the retriever failed to cover NIS2 and DORA adequately, causing answer relevancy to drop from
+          0.88 to 0.29 and context precision from 0.73 to 0.18. Phase 5 resolved this with pgvector
+          hybrid retrieval, per-regulation diversity quotas, and the LLM reranker — recovering all four
+          metrics to or above Phase 1 levels on 3× as many questions across 3× as many regulations.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 Decisions -->
+  <section id="adrs">
+    <span class="snum">06</span>
+    <div class="inner">
+      <h2>Architecture Decisions</h2>
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:28px;">Four of ten ADRs — selected for trade-off depth. Full record in <a href="https://github.com/qsanchez/compliancerag/tree/main/docs/adr" target="_blank" rel="noopener">docs/adr/</a>.</p>
+
+      <!-- ADR-009 -->
+      <div class="adr">
+        <div class="adr-head">
+          <div>
+            <div class="adr-num">ADR-009</div>
+            <div class="adr-title">Reranker Infrastructure — three pivots to LLM reranking</div>
+            <div class="adr-file"><a href="https://github.com/qsanchez/compliancerag/blob/main/docs/adr/009-reranker-infrastructure.md" target="_blank" rel="noopener">docs/adr/009-reranker-infrastructure.md ↗</a></div>
+          </div>
+          <span class="pill p-amd">Accepted — Amended</span>
+        </div>
+        <div class="adr-body">
+          <p>The reranker started as a local PyTorch cross-encoder and required three pivots before a working production solution landed.</p>
+          <ol class="pivots">
+            <li>
+              <span class="pn">1</span>
+              <strong>Cross-encoder — local PyTorch (<code>ms-marco-MiniLM-L-6-v2</code>)</strong><br>
+              Lambda cold starts trigger PyTorch JIT warmup: 30–60 s on Graviton2 ARM64 (no AVX-512). At <code>fetch_k=15</code> candidates, that is 15 sequential forward passes on a cold CPU — consistently hitting the 60 s function timeout. Fundamentally incompatible with stateless serverless compute.
+            </li>
+            <li>
+              <span class="pn">2</span>
+              <strong>Cohere Rerank v3.5 via Amazon Bedrock</strong><br>
+              Same cross-encoder algorithm, inference offloaded to Cohere GPU infrastructure. No PyTorch, no cold-start penalty, IAM-controlled, ~100–200 ms round-trip. Required migration eu-west-1 → us-east-1 (only availability region). Migration completed — then <code>bedrock-agent-runtime.rerank()</code> returns HTTP 403: AWS Marketplace subscription wall with no self-service activation path. The Marketplace listing prices Cohere Rerank as a dedicated SageMaker endpoint at $3.50/host/hour — a different product from the serverless Bedrock API.
+            </li>
+            <li>
+              <span class="pn">3</span>
+              <strong>LLM reranking — current approach</strong><br>
+              All candidates ranked in a single Claude Haiku completion. Each passage is annotated with <code>[regulation · Art.N · title]</code>; model returns a JSON array of ranked indices. Graceful fallback to vector-similarity order on any failure. Zero new AWS resources or IAM permissions beyond what generation already requires.
+            </li>
+          </ol>
+          <div class="tradeoff">
+            <strong>Lesson:</strong> Lambda handles request routing, LLM API calls, and SQL queries. Managed APIs (Bedrock) handle GPU-backed inference. Persistent compute (ECS/EC2) handles models that must stay resident between requests. Recognising this boundary early is an architectural decision, not a workaround.
+          </div>
+        </div>
+      </div>
+
+      <!-- ADR-003 -->
+      <div class="adr">
+        <div class="adr-head">
+          <div>
+            <div class="adr-num">ADR-003 + Amendment</div>
+            <div class="adr-title">Hybrid Retrieval — three-leg RRF + cross-regulation diversity</div>
+            <div class="adr-file"><a href="https://github.com/qsanchez/compliancerag/blob/main/docs/adr/003-hybrid-retrieval.md" target="_blank" rel="noopener">docs/adr/003-hybrid-retrieval.md ↗</a></div>
+          </div>
+          <span class="pill p-amd">Accepted — Amended</span>
+        </div>
+        <div class="adr-body">
+          <p>Regulatory text requires two distinct retrieval signals. Semantic similarity retrieves articles conceptually related to the query even without surface vocabulary overlap. Keyword matching retrieves articles with exact legal references — "Article 32", "Recital 83" — that pure semantic search consistently missed in early RAGAS runs. Metadata scoring rewards chunks whose <code>article_number</code> and <code>title</code> fields match query terms. Three legs run in parallel; RRF (k=60) merges by rank position alone — no interpolation weight to tune.</p>
+          <div class="tradeoff">
+            <strong>Amendment (Phase 7):</strong> For cross-regulation queries, standard RRF returned candidates from one regulation only — the query embedding gravitates toward whichever regulation dominates the corpus. Fix: detect regulation names in the query, run a separate three-leg RRF search per regulation with a <code>WHERE metadata->>'regulation' = %s</code> filter, allocate retrieval slots evenly. Post-rerank quota enforcement (<a href="https://github.com/qsanchez/compliancerag/blob/main/rag/pipeline.py" target="_blank" rel="noopener"><code>_enforce_balance()</code></a>) guarantees each regulation occupies at least ⌊top_k/n⌋ context slots even if the reranker would otherwise favour one side.
+          </div>
+        </div>
+      </div>
+
+      <!-- ADR-010 -->
+      <div class="adr">
+        <div class="adr-head">
+          <div>
+            <div class="adr-num">ADR-010</div>
+            <div class="adr-title">Observability: CloudWatch-first over LangSmith</div>
+            <div class="adr-file"><a href="https://github.com/qsanchez/compliancerag/blob/main/docs/adr/010-observability-cloudwatch-first.md" target="_blank" rel="noopener">docs/adr/010-observability-cloudwatch-first.md ↗</a></div>
+          </div>
+          <span class="pill p-ok">Accepted</span>
+        </div>
+        <div class="adr-body">
+          <p>The Lambda function runs in a private subnet with no NAT gateway. It cannot reach <code>api.smith.langchain.com</code>; all LangSmith traces are silently dropped. Adding a NAT gateway costs ~$32/month plus data transfer — unjustified for a PoC solely to recover a tracing UI.</p>
+          <p>LangSmith's two value propositions required separate replacements: per-span operational metrics (retrieve/rerank/generate latency, token counts, cost per query) become enriched structured log fields + CloudWatch metric filters; quality monitoring on real traffic becomes an online LLM-as-judge evaluator running asynchronously on 10% of production queries — detecting query distribution shift and regulation data staleness that the fixed offline golden dataset cannot surface.</p>
+          <div class="tradeoff">
+            <strong>Trade-off:</strong> LangSmith's waterfall trace UI (full call tree with inputs and outputs at each node) is not replicable in CloudWatch without a structured trace viewer. Mitigated by per-span timing fields in every log line, queryable via Log Insights to reconstruct the latency breakdown per request.
+          </div>
+        </div>
+      </div>
+
+      <!-- ADR-001 -->
+      <div class="adr">
+        <div class="adr-head">
+          <div>
+            <div class="adr-num">ADR-001</div>
+            <div class="adr-title">Vector Store: pgvector over managed vector databases</div>
+            <div class="adr-file"><a href="https://github.com/qsanchez/compliancerag/blob/main/docs/adr/001-vector-store.md" target="_blank" rel="noopener">docs/adr/001-vector-store.md ↗</a></div>
+          </div>
+          <span class="pill p-ok">Accepted</span>
+        </div>
+        <div class="adr-body">
+          <p>pgvector on Amazon RDS PostgreSQL over Pinecone, Weaviate, and Qdrant for three reasons: hybrid retrieval in one store (<code>pg_trgm</code> lives in the same DB as the vectors, enabling semantic + keyword RRF without a separate BM25 service); no vendor lock-in (standard PostgreSQL — switching cloud providers requires no application code changes); cost ($0 marginal cost beyond the existing RDS instance vs. managed vector DB minimum-tier pricing at PoC scale).</p>
+          <div class="tradeoff">
+            <strong>Upgrade path:</strong> If corpus exceeds ~10M chunks or query concurrency demands sub-10ms p99 latency, add HNSW indexing to <a href="https://github.com/qsanchez/compliancerag/blob/main/ingestion/indexer.py" target="_blank" rel="noopener"><code>ingestion/indexer.py:_ensure_pgvector_schema</code></a> without changing the retrieval interface, or evaluate Cohere Embed v3 (on Bedrock) as a drop-in embedding upgrade — measure via RAGAS comparison before merging.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <svg viewBox="0 0 321 241" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="320" height="240" rx="36" ry="36" fill="#003366"/>
+      <path d="M80 120C80 75.82 115.82 40 160 40C181.22 40 201.57 48.43 216.57 63.43C231.57 78.43 240 98.78 240 120C240 141.22 231.57 161.57 216.57 176.57C201.57 191.57 181.22 200 160 200C138.78 200 118.43 191.57 103.43 176.57C88.43 161.57 80 141.22 80 120ZM160 59.62C126.65 59.62 99.62 86.65 99.62 120C99.62 153.35 126.65 180.38 160 180.38C193.35 180.38 220.38 153.35 220.38 120C220.38 86.65 193.35 59.62 160 59.62Z" fill="#fff"/>
+      <path d="M240 200C209.31 200 181.32 182.44 167.97 154.8L184.53 146.8C194.82 168.08 216.37 181.6 240 181.6Z" fill="#fff"/>
+    </svg>
+    ComplianceRAG &mdash; AWS Bedrock &middot; LangGraph &middot; pgvector &middot; Terraform
+    &nbsp;&nbsp;
+    <a href="https://github.com/qsanchez/compliancerag" target="_blank" rel="noopener" style="color:var(--muted);">github.com/qsanchez/compliancerag ↗</a>
+  </div>
+</footer>
+
+<script>
+// ── Lightbox ──────────────────────────────────────────
+function openLb(src) {
+  document.getElementById('lb-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLb() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lb-img').src = '';
+}
+document.getElementById('lightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeLb();
+});
+document.querySelectorAll('.diagram-card img').forEach(function(img) {
+  img.addEventListener('click', function() { openLb(this.src); });
+});
+
+// ── Nav + slide counter ───────────────────────────────
+(function() {
+  var links    = document.querySelectorAll('.nav-list a');
+  var sections = Array.from(document.querySelectorAll('section[id]'));
+  var counter  = document.getElementById('snum');
+
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        var id  = e.target.id;
+        var idx = sections.indexOf(e.target);
+        if (counter) counter.textContent = idx + 1;
+        links.forEach(function(a) {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+
+  sections.forEach(function(s) { obs.observe(s); });
+})();
+
+// ── Keyboard navigation ───────────────────────────────
+(function() {
+  var sections = Array.from(document.querySelectorAll('section[id]'));
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'Escape') { closeLb(); return; }
+    if (document.getElementById('lightbox').classList.contains('open')) return;
+
+    var cur = sections.findIndex(function(s) {
+      var r = s.getBoundingClientRect();
+      return r.top <= 60 && r.bottom > 60;
+    });
+    if (cur < 0) cur = 0;
+
+    if ((e.key === 'ArrowDown' || e.key === 'PageDown') && cur < sections.length - 1) {
+      e.preventDefault();
+      sections[cur + 1].scrollIntoView({ behavior: 'smooth' });
+    } else if ((e.key === 'ArrowUp' || e.key === 'PageUp') && cur > 0) {
+      e.preventDefault();
+      sections[cur - 1].scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+})();
+
+// ── RAGAS chart ───────────────────────────────────────
+(function() {
+  var canvas  = document.getElementById('chart');
+  var dpr     = window.devicePixelRatio || 1;
+  var phases  = ['Phase 1\nGDPR · Semantic', 'Phase 2\n3-reg · Cross-encoder', 'Phase 5\n3-reg · LLM Reranker'];
+  var metrics = ['Faithfulness', 'Answer Relevancy', 'Context Precision', 'Context Recall'];
+  var colors  = ['#58a6ff', '#3fb950', '#f0883e', '#bc8cff'];
+  var values  = [
+    [0.886, 0.878, 0.733, 0.886],
+    [0.860, 0.289, 0.183, 0.326],
+    [0.980, 0.907, 0.833, 0.853]
+  ];
+
+  function draw() {
+    var W  = canvas.parentElement.clientWidth - 52;
+    var H  = 290;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    var ml = 42, mr = 8, mt = 22, mb = 76;
+    var cw = W - ml - mr;
+    var ch = H - mt - mb;
+
+    // Y gridlines
+    for (var i = 0; i <= 5; i++) {
+      var gy = mt + ch - (i / 5) * ch;
+      ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(ml, gy); ctx.lineTo(ml + cw, gy); ctx.stroke();
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '11px -apple-system,system-ui,sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText((i * 0.2).toFixed(1), ml - 6, gy + 4);
+    }
+
+    // Bars
+    var nP = phases.length, nM = metrics.length;
+    var gw = cw / nP, pad = gw * 0.13, gap = 3;
+    var bw = (gw - pad * 2 - gap * (nM - 1)) / nM;
+
+    values.forEach(function(pv, pi) {
+      var gx = ml + pi * gw;
+      pv.forEach(function(val, mi) {
+        var bx = gx + pad + mi * (bw + gap);
+        var bh = val * ch;
+        var by = mt + ch - bh;
+        var r  = Math.min(3, bw / 4);
+        ctx.fillStyle = colors[mi];
+        ctx.globalAlpha = 0.88;
+        ctx.beginPath();
+        ctx.moveTo(bx + r, by);
+        ctx.lineTo(bx + bw - r, by);
+        ctx.arcTo(bx + bw, by, bx + bw, by + r, r);
+        ctx.lineTo(bx + bw, by + bh);
+        ctx.lineTo(bx, by + bh);
+        ctx.lineTo(bx, by + r);
+        ctx.arcTo(bx, by, bx + r, by, r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if (bh > 18) {
+          ctx.fillStyle = colors[mi];
+          ctx.font = '9.5px -apple-system,system-ui,sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(val.toFixed(2), bx + bw / 2, by - 4);
+        }
+      });
+      // Phase labels (2 lines)
+      phases[pi].split('\n').forEach(function(line, li) {
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '11px -apple-system,system-ui,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(line, gx + gw / 2, mt + ch + 17 + li * 14);
+      });
+    });
+
+    // Legend
+    var lY = H - 10;
+    metrics.forEach(function(name, i) {
+      var lx = ml + i * (cw / nM);
+      ctx.fillStyle = colors[i]; ctx.globalAlpha = 0.88;
+      ctx.fillRect(lx, lY - 9, 10, 9);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#c9d1d9';
+      ctx.font = '11px -apple-system,system-ui,sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(name, lx + 14, lY);
+    });
+  }
+
+  draw();
+  window.addEventListener('resize', draw);
+})();
+</script>
+</body>
+</html>

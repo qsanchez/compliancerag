@@ -142,9 +142,6 @@ compliancerag/
 │   ├── evaluator.py                # RAGAS runner
 │   └── reports/                    # Evaluation outputs (gitignored)
 │
-├── observability/                  # Monitoring config
-│   └── cloudwatch/                 # Dashboard JSON + metric filter definitions
-│
 ├── tests/
 │   ├── unit/                       # Unit tests (all modules, mocked deps)
 │   └── integration/                # Integration tests (real infra)

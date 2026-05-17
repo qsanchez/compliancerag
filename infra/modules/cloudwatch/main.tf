@@ -20,7 +20,7 @@ resource "aws_sns_topic_subscription" "email" {
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = local.name_prefix
   dashboard_body = templatefile(
-    "${path.root}/../observability/cloudwatch/dashboard.json",
+    "${path.module}/dashboard.json",
     {
       environment    = var.environment
       aws_region     = var.aws_region
